@@ -16,6 +16,7 @@ import { ResponseMessage } from 'src/response/response.decorator';
 import { AdminJwtAuthGuard } from 'src/auth/guards/admin-jwt-auth.guard';
 import { MustChangePasswordGuard } from 'src/auth/guards/must-change-password.guard';
 import { Must2FAGuard } from 'src/auth/guards/must-2fa.guard';
+import { SuperAdminGuard } from 'src/auth/guards/super-admin.guard';
 import { Response } from 'express';
 import { EmailService } from 'src/email/email.service';
 
@@ -79,6 +80,7 @@ export class AdminsController {
   }
 
   @ResponseMessage('Admin deleted successfully!')
+  @UseGuards(SuperAdminGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.adminsService.remove(+id);

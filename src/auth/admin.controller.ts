@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Res, UseGuards, Put } from '@nestjs/common';
+import { Controller, Post, Body, Res, UseGuards, Put, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -9,11 +9,16 @@ import { Response } from 'express';
 import { AdminJwtAuthGuard } from './guards/admin-jwt-auth.guard';
 import { Must2FAGuard } from './guards/must-2fa.guard';
 import { CurrentUser } from './decorators/current-user-decorator';
+import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { Admin } from 'src/admins/entities/admin.entity';
+import { AdminsService } from 'src/admins/admins.service';
 
 @Controller('admin/auth')
 export class AdminController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly adminsService: AdminsService,
+  ) {}
 
   @ResponseMessage('Admin login successful!')
   @Post('login')
@@ -31,6 +36,13 @@ export class AdminController {
     @Res({ passthrough: true }) res: Response,
   ) {
     return this.authService.verify2FALogin(verify2FALoginDto.pendingToken, verify2FALoginDto.code, res);
+  }
+
+  @ResponseMessage('Current admin retrieved successfully!')
+  @UseGuards(AdminJwtAuthGuard)
+  @Get('me')
+  getMe(@CurrentAdmin() admin: Admin) {
+    return this.adminsService.getMe(admin);
   }
 
   @ResponseMessage('Password changed successfully!')

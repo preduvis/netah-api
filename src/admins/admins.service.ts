@@ -55,6 +55,10 @@ export class AdminsService {
     return this.adminRepository.findAll();
   }
 
+  async getMe(admin: Admin): Promise<Admin> {
+    return this.findOne(admin.id);
+  }
+
   async remove(id: number): Promise<void> {
     const admin = await this.findOne(id);
     await this.em.removeAndFlush(admin);
