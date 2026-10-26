@@ -6,8 +6,8 @@ import { Transporter } from 'nodemailer';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: Transporter;
   private fromEmail: string;
+  private smtpConfig: any;
 
   constructor(private configService: ConfigService) {
     const smtpHost = this.configService.get<string>('SMTP_HOST');
@@ -19,10 +19,11 @@ export class EmailService {
       this.logger.warn('SMTP credentials not fully configured. Email service may not work.');
     }
 
-    this.transporter = nodemailer.createTransport({
+    // Store config instead of creating transporter - create fresh transporter for each email
+    this.smtpConfig = {
       host: smtpHost,
       port: smtpPort,
-      secure: smtpPort === 465, // true for 465, false for other ports (587 uses STARTTLS)
+      secure: smtpPort === 465,
       auth: {
         user: smtpUser,
         pass: smtpPass,
@@ -30,21 +31,24 @@ export class EmailService {
       tls: {
         rejectUnauthorized: false,
       },
-      requireTLS: smtpPort === 587, // Require STARTTLS for port 587
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 10,
+      requireTLS: smtpPort === 587,
+      pool: false,
       connectionTimeout: 60000,
       greetingTimeout: 30000,
       socketTimeout: 60000,
-    });
+    };
 
     this.fromEmail = this.configService.get<string>('SMTP_FROM_EMAIL') || 'noreply@example.com';
   }
 
+  private createTransporter(): Transporter {
+    return nodemailer.createTransport(this.smtpConfig);
+  }
+
   async sendWelcomeEmail(to: string, firstName: string) {
     try {
-      const info = await this.transporter.sendMail({
+      const transporter = this.createTransporter();
+      const info = await transporter.sendMail({
         from: this.fromEmail,
         to,
         subject: 'Welcome to Netah!',
@@ -70,7 +74,8 @@ export class EmailService {
     taskPublicId: string,
   ) {
     try {
-      const info = await this.transporter.sendMail({
+      const transporter = this.createTransporter();
+      const info = await transporter.sendMail({
         from: this.fromEmail,
         to,
         subject: 'Your bid was accepted!',
@@ -99,7 +104,8 @@ export class EmailService {
     taskPublicId: string,
   ) {
     try {
-      const info = await this.transporter.sendMail({
+      const transporter = this.createTransporter();
+      const info = await transporter.sendMail({
         from: this.fromEmail,
         to,
         subject: 'New bid on your task',
@@ -126,7 +132,8 @@ export class EmailService {
     taskPublicId: string,
   ) {
     try {
-      const info = await this.transporter.sendMail({
+      const transporter = this.createTransporter();
+      const info = await transporter.sendMail({
         from: this.fromEmail,
         to,
         subject: 'Task completed - awaiting approval',
@@ -149,7 +156,8 @@ export class EmailService {
 
   async sendPasswordResetOtp(to: string, otp: string, firstName: string) {
     try {
-      const info = await this.transporter.sendMail({
+      const transporter = this.createTransporter();
+      const info = await transporter.sendMail({
         from: this.fromEmail,
         to,
         subject: 'Reset your password - OTP',
@@ -180,7 +188,8 @@ export class EmailService {
     const loginUrl = `${this.configService.get('ADMIN_PORTAL_URL') || 'https://netah-back.onrender.com'}/admin/login`;
 
     try {
-      const info = await this.transporter.sendMail({
+      const transporter = this.createTransporter();
+      const info = await transporter.sendMail({
         from: this.fromEmail,
         to,
         subject: 'Welcome to Netah Admin',
@@ -383,7 +392,8 @@ export class EmailService {
 
   async sendGenericEmail(to: string, subject: string, html: string) {
     try {
-      const info = await this.transporter.sendMail({
+      const transporter = this.createTransporter();
+      const info = await transporter.sendMail({
         from: this.fromEmail,
         to,
         subject,
