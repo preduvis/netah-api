@@ -33,9 +33,9 @@ export class EmailService {
       },
       requireTLS: smtpPort === 587,
       pool: false,
-      connectionTimeout: 60000,
+      connectionTimeout: 90000,
       greetingTimeout: 30000,
-      socketTimeout: 60000,
+      socketTimeout: 90000,
     };
 
     this.fromEmail = this.configService.get<string>('SMTP_FROM_EMAIL') || 'noreply@example.com';
@@ -45,26 +45,57 @@ export class EmailService {
     return nodemailer.createTransport(this.smtpConfig);
   }
 
-  async sendWelcomeEmail(to: string, firstName: string) {
-    try {
-      const transporter = this.createTransporter();
-      const info = await transporter.sendMail({
-        from: this.fromEmail,
-        to,
-        subject: 'Welcome to Netah!',
-        html: `
-          <h1>Welcome ${firstName}!</h1>
-          <p>Thank you for joining Netah. We're excited to have you on board.</p>
-          <p>Start exploring tasks or post your own to get started.</p>
-        `,
-      });
+  private async sendWithRetry(
+    mailOptions: any,
+    maxRetries: number = 3,
+  ): Promise<any> {
+    let lastError: any;
 
-      this.logger.log(`Welcome email sent to ${to}: ${info.messageId}`);
-      return { success: true, data: info };
-    } catch (error) {
-      this.logger.error('Error sending welcome email', error);
-      return { success: false, error };
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const transporter = this.createTransporter();
+
+      try {
+        const info = await transporter.sendMail(mailOptions);
+        transporter.close();
+        return { success: true, data: info };
+      } catch (error) {
+        lastError = error;
+        try {
+          transporter.close();
+        } catch {
+          // Ignore cleanup errors
+        }
+
+        if (attempt < maxRetries) {
+          const backoffMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+          this.logger.warn(
+            `Email send attempt ${attempt} failed, retrying in ${backoffMs}ms: ${error.message}`,
+          );
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+        }
+      }
     }
+
+    this.logger.error(`All ${maxRetries} email send attempts failed`, lastError);
+    return { success: false, error: lastError };
+  }
+
+  async sendWelcomeEmail(to: string, firstName: string) {
+    const result = await this.sendWithRetry({
+      from: this.fromEmail,
+      to,
+      subject: 'Welcome to Netah!',
+      html: `
+        <h1>Welcome ${firstName}!</h1>
+        <p>Thank you for joining Netah. We're excited to have you on board.</p>
+        <p>Start exploring tasks or post your own to get started.</p>
+      `,
+    });
+
+    if (result.success) {
+      this.logger.log(`Welcome email sent to ${to}: ${result.data.messageId}`);
+    }
+    return result;
   }
 
   async sendTaskAssignedEmail(
@@ -73,26 +104,22 @@ export class EmailService {
     taskTitle: string,
     taskPublicId: string,
   ) {
-    try {
-      const transporter = this.createTransporter();
-      const info = await transporter.sendMail({
-        from: this.fromEmail,
-        to,
-        subject: 'Your bid was accepted!',
-        html: `
-          <h1>Congratulations ${recipientName}!</h1>
-          <p>Your bid on "<strong>${taskTitle}</strong>" was accepted.</p>
-          <p>The task is now assigned to you. Good luck!</p>
-          <a href="${this.configService.get('FRONTEND_URL')}/tasks/${taskPublicId}">View Task</a>
-        `,
-      });
+    const result = await this.sendWithRetry({
+      from: this.fromEmail,
+      to,
+      subject: 'Your bid was accepted!',
+      html: `
+        <h1>Congratulations ${recipientName}!</h1>
+        <p>Your bid on "<strong>${taskTitle}</strong>" was accepted.</p>
+        <p>The task is now assigned to you. Good luck!</p>
+        <a href="${this.configService.get('FRONTEND_URL')}/tasks/${taskPublicId}">View Task</a>
+      `,
+    });
 
-      this.logger.log(`Task assigned email sent to ${to}: ${info.messageId}`);
-      return { success: true, data: info };
-    } catch (error) {
-      this.logger.error('Error sending task assigned email', error);
-      return { success: false, error };
+    if (result.success) {
+      this.logger.log(`Task assigned email sent to ${to}: ${result.data.messageId}`);
     }
+    return result;
   }
 
   async sendNewBidEmail(
@@ -103,26 +130,22 @@ export class EmailService {
     bidAmount: number,
     taskPublicId: string,
   ) {
-    try {
-      const transporter = this.createTransporter();
-      const info = await transporter.sendMail({
-        from: this.fromEmail,
-        to,
-        subject: 'New bid on your task',
-        html: `
-          <h1>New Bid Received</h1>
-          <p>Hi ${posterName},</p>
-          <p><strong>${bidderName}</strong> placed a bid of <strong>₦${bidAmount}</strong> on your task "<strong>${taskTitle}</strong>".</p>
-          <a href="${this.configService.get('FRONTEND_URL')}/tasks/${taskPublicId}">View Bids</a>
-        `,
-      });
+    const result = await this.sendWithRetry({
+      from: this.fromEmail,
+      to,
+      subject: 'New bid on your task',
+      html: `
+        <h1>New Bid Received</h1>
+        <p>Hi ${posterName},</p>
+        <p><strong>${bidderName}</strong> placed a bid of <strong>₦${bidAmount}</strong> on your task "<strong>${taskTitle}</strong>".</p>
+        <a href="${this.configService.get('FRONTEND_URL')}/tasks/${taskPublicId}">View Bids</a>
+      `,
+    });
 
-      this.logger.log(`New bid email sent to ${to}: ${info.messageId}`);
-      return { success: true, data: info };
-    } catch (error) {
-      this.logger.error('Error sending new bid email', error);
-      return { success: false, error };
+    if (result.success) {
+      this.logger.log(`New bid email sent to ${to}: ${result.data.messageId}`);
     }
+    return result;
   }
 
   async sendTaskCompletedEmail(
@@ -131,52 +154,44 @@ export class EmailService {
     taskTitle: string,
     taskPublicId: string,
   ) {
-    try {
-      const transporter = this.createTransporter();
-      const info = await transporter.sendMail({
-        from: this.fromEmail,
-        to,
-        subject: 'Task completed - awaiting approval',
-        html: `
-          <h1>Task Completed</h1>
-          <p>Hi ${posterName},</p>
-          <p>The runner has marked "<strong>${taskTitle}</strong>" as completed.</p>
-          <p>Please review and approve the task to release funds.</p>
-          <a href="${this.configService.get('FRONTEND_URL')}/tasks/${taskPublicId}">Review Task</a>
-        `,
-      });
+    const result = await this.sendWithRetry({
+      from: this.fromEmail,
+      to,
+      subject: 'Task completed - awaiting approval',
+      html: `
+        <h1>Task Completed</h1>
+        <p>Hi ${posterName},</p>
+        <p>The runner has marked "<strong>${taskTitle}</strong>" as completed.</p>
+        <p>Please review and approve the task to release funds.</p>
+        <a href="${this.configService.get('FRONTEND_URL')}/tasks/${taskPublicId}">Review Task</a>
+      `,
+    });
 
-      this.logger.log(`Task completed email sent to ${to}: ${info.messageId}`);
-      return { success: true, data: info };
-    } catch (error) {
-      this.logger.error('Error sending task completed email', error);
-      return { success: false, error };
+    if (result.success) {
+      this.logger.log(`Task completed email sent to ${to}: ${result.data.messageId}`);
     }
+    return result;
   }
 
   async sendPasswordResetOtp(to: string, otp: string, firstName: string) {
-    try {
-      const transporter = this.createTransporter();
-      const info = await transporter.sendMail({
-        from: this.fromEmail,
-        to,
-        subject: 'Reset your password - OTP',
-        html: `
-          <h1>Password Reset Request</h1>
-          <p>Hi ${firstName},</p>
-          <p>Your OTP for password reset is:</p>
-          <h2 style="letter-spacing: 5px; font-size: 32px;">${otp}</h2>
-          <p>This OTP will expire in 15 minutes.</p>
-          <p>If you didn't request this, please ignore this email.</p>
-        `,
-      });
+    const result = await this.sendWithRetry({
+      from: this.fromEmail,
+      to,
+      subject: 'Reset your password - OTP',
+      html: `
+        <h1>Password Reset Request</h1>
+        <p>Hi ${firstName},</p>
+        <p>Your OTP for password reset is:</p>
+        <h2 style="letter-spacing: 5px; font-size: 32px;">${otp}</h2>
+        <p>This OTP will expire in 15 minutes.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+      `,
+    });
 
-      this.logger.log(`Password reset OTP sent to ${to}: ${info.messageId}`);
-      return { success: true, data: info };
-    } catch (error) {
-      this.logger.error('Error sending password reset OTP', error);
-      return { success: false, error };
+    if (result.success) {
+      this.logger.log(`Password reset OTP sent to ${to}: ${result.data.messageId}`);
     }
+    return result;
   }
 
   async sendAdminCreatedEmail(
@@ -187,12 +202,10 @@ export class EmailService {
   ) {
     const loginUrl = `${this.configService.get('ADMIN_PORTAL_URL') || 'https://netah-back.onrender.com'}/admin/login`;
 
-    try {
-      const transporter = this.createTransporter();
-      const info = await transporter.sendMail({
-        from: this.fromEmail,
-        to,
-        subject: 'Welcome to Netah Admin',
+    const result = await this.sendWithRetry({
+      from: this.fromEmail,
+      to,
+      subject: 'Welcome to Netah Admin',
         html: `
           <!DOCTYPE html>
           <html>
@@ -380,31 +393,25 @@ export class EmailService {
           </body>
           </html>
         `,
-      });
+    });
 
-      this.logger.log(`Admin created email sent to ${to}: ${info.messageId}`);
-      return { success: true, data: info };
-    } catch (error) {
-      this.logger.error('Error sending admin created email', error);
-      return { success: false, error };
+    if (result.success) {
+      this.logger.log(`Admin created email sent to ${to}: ${result.data.messageId}`);
     }
+    return result;
   }
 
   async sendGenericEmail(to: string, subject: string, html: string) {
-    try {
-      const transporter = this.createTransporter();
-      const info = await transporter.sendMail({
-        from: this.fromEmail,
-        to,
-        subject,
-        html,
-      });
+    const result = await this.sendWithRetry({
+      from: this.fromEmail,
+      to,
+      subject,
+      html,
+    });
 
-      this.logger.log(`Generic email sent to ${to}: ${info.messageId}`);
-      return { success: true, data: info };
-    } catch (error) {
-      this.logger.error('Error sending generic email', error);
-      return { success: false, error };
+    if (result.success) {
+      this.logger.log(`Generic email sent to ${to}: ${result.data.messageId}`);
     }
+    return result;
   }
 }
