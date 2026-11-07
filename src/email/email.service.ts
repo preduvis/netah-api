@@ -184,7 +184,7 @@ export class EmailService {
     lastName: string,
     temporaryPassword: string,
   ) {
-    const loginUrl = `${this.configService.get('ADMIN_PORTAL_URL') || 'https://netah-back.onrender.com'}/admin/login`;
+    const loginUrl = `${this.configService.get('ADMIN_PORTAL_URL') || 'https://netah-backoffice.onrender.com'}/admin/login`;
 
     const emailRequest: SendTransacEmailRequest = {
       sender: { email: this.fromEmail, name: this.fromName },
