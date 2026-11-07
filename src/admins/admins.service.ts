@@ -18,6 +18,12 @@ export class AdminsService {
     return admin;
   }
 
+  async createWithoutFlush(createAdminDto: CreateAdminDto | Partial<Admin>): Promise<Admin> {
+    const admin = this.em.create(Admin, createAdminDto as any);
+    await this.em.persist(admin);
+    return admin;
+  }
+
   async findOne(id: number): Promise<Admin> {
     const admin = await this.adminRepository.findOne({ id });
     if (!admin) {

@@ -9,6 +9,7 @@ import {
   UseGuards,
   Res,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { AdminsService } from './admins.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
@@ -19,6 +20,7 @@ import { Must2FAGuard } from 'src/auth/guards/must-2fa.guard';
 import { SuperAdminGuard } from 'src/auth/guards/super-admin.guard';
 import { Response } from 'express';
 import { EmailService } from 'src/email/email.service';
+import { EntityManager } from '@mikro-orm/postgresql';
 
 @UseGuards(AdminJwtAuthGuard, MustChangePasswordGuard, Must2FAGuard)
 @Controller('admin/admins')
@@ -26,6 +28,7 @@ export class AdminsController {
   constructor(
     private readonly adminsService: AdminsService,
     private readonly emailService: EmailService,
+    private readonly em: EntityManager,
   ) {}
 
   @ResponseMessage('Admin created successfully!')
@@ -41,24 +44,36 @@ export class AdminsController {
       throw new ConflictException('Admin already exists. Please use a different email or phone number!');
     }
 
-    const admin = await this.adminsService.create(createAdminDto);
+    // Use transaction to ensure atomicity: only create admin if email sends successfully
+    return await this.em.transactional(async (em) => {
+      const admin = await this.adminsService.createWithoutFlush(createAdminDto);
 
-    // Send welcome email with credentials
-    await this.emailService.sendAdminCreatedEmail(
-      admin.email,
-      admin.firstName,
-      admin.lastName,
-      createAdminDto.password,
-    );
+      // Send welcome email with credentials
+      const emailResult = await this.emailService.sendAdminCreatedEmail(
+        admin.email,
+        admin.firstName,
+        admin.lastName,
+        createAdminDto.password,
+      );
 
-    return {
-      id: admin.id,
-      email: admin.email,
-      firstName: admin.firstName,
-      lastName: admin.lastName,
-      phoneNumber: admin.phoneNumber,
-      mustChangePassword: admin.mustChangePassword,
-    };
+      if (!emailResult.success) {
+        throw new InternalServerErrorException(
+          'Failed to send admin welcome email. Admin creation aborted.',
+        );
+      }
+
+      // If email succeeds, flush to commit the admin
+      await em.flush();
+
+      return {
+        id: admin.id,
+        email: admin.email,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        phoneNumber: admin.phoneNumber,
+        mustChangePassword: admin.mustChangePassword,
+      };
+    });
   }
 
   @ResponseMessage('All admins retrieved successfully!')
