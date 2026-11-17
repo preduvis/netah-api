@@ -887,7 +887,7 @@
   resolved "https://registry.npmjs.org/@microsoft/tsdoc/-/tsdoc-0.17.1.tgz"
   integrity sha512-VHyYyyoH63jFoO3shpw9Zfijk5v/9p/VrClW35z0/q6ooK7sSmxpzOkS4iZPxs3vO4XtBW4H38HRAKkAMIK7DA==
 
-"@mikro-orm/cli@^6.6.3":
+"@mikro-orm/cli@6.6.18":
   version "6.6.18"
   resolved "https://registry.npmjs.org/@mikro-orm/cli/-/cli-6.6.18.tgz"
   integrity sha512-Ore2KPTvhB0IAm4YH/Xl1dEWbld449KyGS7oqtyXFjGUaVEThgBzj41c5nFOl25p3KqJxvIxHBhLrw6caazElg==
@@ -899,7 +899,7 @@
     tsconfig-paths "4.2.0"
     yargs "17.7.2"
 
-"@mikro-orm/core@^6.0.0", "@mikro-orm/core@^6.0.0 || ^6.0.0-dev.0 || ^7.0.0-dev.0", "@mikro-orm/core@^6.6.3", "@mikro-orm/core@6.6.18":
+"@mikro-orm/core@^6.0.0", "@mikro-orm/core@^6.0.0 || ^6.0.0-dev.0 || ^7.0.0-dev.0", "@mikro-orm/core@6.6.18":
   version "6.6.18"
   resolved "https://registry.npmjs.org/@mikro-orm/core/-/core-6.6.18.tgz"
   integrity sha512-UXev/R574jun5k0kcOl5Vy5Gp+IJntLEJ6WAp75o+ovW6Vq38jGaz5OAYgXV0vV06TZf2Udxgg72bHYnZDbcRg==
@@ -921,7 +921,7 @@
     knex "3.2.10"
     sqlstring "2.3.3"
 
-"@mikro-orm/migrations@^6.6.3":
+"@mikro-orm/migrations@6.6.18":
   version "6.6.18"
   resolved "https://registry.npmjs.org/@mikro-orm/migrations/-/migrations-6.6.18.tgz"
   integrity sha512-qK00dEM/4x4BilX2rOHPh/ZQBfjUnZpYFlRGfVyyAeu84g4SC4LW3RAXw2nU1QDI42RTBW/bE11CXnsxolcChw==
@@ -935,7 +935,7 @@
   resolved "https://registry.npmjs.org/@mikro-orm/nestjs/-/nestjs-6.1.1.tgz"
   integrity sha512-aluD3eTeuCvIePDk5UBanHIhu1zAJQXqWAg47MZdHJmFkNuXn62DCXbD2c4X5TCpKW/m0zjba22ilyZ/AFG9qg==
 
-"@mikro-orm/postgresql@^6.6.3":
+"@mikro-orm/postgresql@6.6.18":
   version "6.6.18"
   resolved "https://registry.npmjs.org/@mikro-orm/postgresql/-/postgresql-6.6.18.tgz"
   integrity sha512-7DBLh8n0HETORV6DsvB8Wh5wPDaY0fPFQw3ZpCE7JBdlBBurcV8aeSD8J1btlv81GVX511jMMo2/VzjkycQj+A==
@@ -946,10 +946,10 @@
     postgres-date "2.1.0"
     postgres-interval "4.0.2"
 
-"@mikro-orm/seeder@^6.6.3":
-  version "6.6.3"
-  resolved "https://registry.npmjs.org/@mikro-orm/seeder/-/seeder-6.6.3.tgz"
-  integrity sha512-nVGRMFJbPPUXfIX8f8OKotgG94xf/eIRjb4eS/Uog9gs7O3BIm2I6b/DY+yYD9UNlEAGs5wgBexT3JjNDoO5oQ==
+"@mikro-orm/seeder@6.6.18":
+  version "6.6.18"
+  resolved "https://registry.npmjs.org/@mikro-orm/seeder/-/seeder-6.6.18.tgz"
+  integrity sha512-pBOTge+zauvgrn/e0Yc3nVayDwnvjudOAtAXho7nm15uFWHbde9A2+dcYmyNt3u5llV8GMHpEaPJ1jyx8TDHaw==
   dependencies:
     fs-extra "11.3.3"
     globby "11.1.0"
