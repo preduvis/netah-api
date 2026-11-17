@@ -250,7 +250,7 @@ export class TasksService {
       actorId: user.uuid || user.id.toString(),
       actorName: `${user.firstName} ${user.lastName}`,
       action: 'Created task',
-      details: `Task created with reward ₦${(task.reward / 100).toFixed(2)}`,
+      details: `Task created with reward ₦${task.reward.toFixed(2)}`,
       metadata: {
         reward: task.reward,
         category: category.name,
@@ -501,7 +501,7 @@ export class TasksService {
       actorRole: ActorRole.RUNNER,
       actorId: bidder.uuid || bidder.id.toString(),
       actorName: `${bidder.firstName} ${bidder.lastName}`,
-      action: `Placed bid of ₦${(taskBid.amount / 100).toFixed(2)}`,
+      action: `Placed bid of ₦${taskBid.amount.toFixed(2)}`,
       details: createTaskBidDto.message || undefined,
       metadata: {
         amount: createTaskBidDto.amount,
@@ -751,7 +751,7 @@ export class TasksService {
       actorRole: isTaskPoster ? ActorRole.POSTER : ActorRole.RUNNER,
       actorId: counteringUser.uuid || counteringUser.id.toString(),
       actorName: `${counteringUser.firstName} ${counteringUser.lastName}`,
-      action: `Counter offer: ₦${(taskBid.amount / 100).toFixed(2)}`,
+      action: `Counter offer: ₦${taskBid.amount.toFixed(2)}`,
       details: counterTaskBidDto.message || undefined,
       metadata: {
         amount: counterTaskBidDto.amount,
@@ -1113,7 +1113,7 @@ export class TasksService {
       actorId: payment.paidBy.uuid || payment.paidBy.id.toString(),
       actorName: `${payment.paidBy.firstName} ${payment.paidBy.lastName}`,
       action: 'Task assigned to runner',
-      details: `Bid accepted: ₦${(payment.bidAmount / 100).toFixed(2)}`,
+      details: `Bid accepted: ₦${payment.bidAmount.toFixed(2)}`,
       metadata: {
         runnerId: taskBid.createdBy.id,
         runnerName: `${taskBid.createdBy.firstName} ${taskBid.createdBy.lastName}`,
@@ -1129,7 +1129,7 @@ export class TasksService {
       actorId: 'system',
       actorName: 'System',
       action: 'Payment verified and escrowed',
-      details: `Total: ₦${(payment.totalAmount / 100).toFixed(2)} (Bid: ₦${(payment.bidAmount / 100).toFixed(2)} + Fee: ₦${(payment.serviceCharge / 100).toFixed(2)})`,
+      details: `Total: ₦${payment.totalAmount.toFixed(2)} (Bid: ₦${payment.bidAmount.toFixed(2)} + Fee: ₦${payment.serviceCharge.toFixed(2)})`,
       metadata: {
         paymentId: payment.id,
         reference: payment.paymentReference,
@@ -1237,7 +1237,7 @@ export class TasksService {
       actorId: currentUser.uuid || currentUser.id.toString(),
       actorName: `${currentUser.firstName} ${currentUser.lastName}`,
       action: 'Bid rejected',
-      details: `Rejected bid of ₦${(taskBid.amount / 100).toFixed(2)} from ${taskBid.createdBy.firstName} ${taskBid.createdBy.lastName}`,
+      details: `Rejected bid of ₦${taskBid.amount.toFixed(2)} from ${taskBid.createdBy.firstName} ${taskBid.createdBy.lastName}`,
       metadata: {
         bidId: taskBid.id,
         amount: taskBid.amount,
@@ -1313,7 +1313,7 @@ export class TasksService {
       actorId: currentUser.uuid || currentUser.id.toString(),
       actorName: `${currentUser.firstName} ${currentUser.lastName}`,
       action: 'Bid withdrawn',
-      details: `Withdrew bid of ₦${(taskBid.amount / 100).toFixed(2)}`,
+      details: `Withdrew bid of ₦${taskBid.amount.toFixed(2)}`,
       metadata: {
         bidId: taskBid.id,
         amount: taskBid.amount,
@@ -1521,7 +1521,7 @@ export class TasksService {
           actorId: 'system',
           actorName: 'System',
           action: 'Payment released to runner',
-          details: `Amount: ₦${(payment.bidAmount / 100).toFixed(2)}`,
+          details: `Amount: ₦${payment.bidAmount.toFixed(2)}`,
           metadata: {
             paymentId: payment.id,
             amount: payment.bidAmount,
@@ -2350,7 +2350,7 @@ export class TasksService {
             actorId: 'system',
             actorName: 'System',
             action: 'Payment refunded to poster',
-            details: `Amount: ₦${(refundAmount / 100).toFixed(2)}`,
+            details: `Amount: ₦${refundAmount.toFixed(2)}`,
             metadata: {
               paymentId: payment.id,
               amount: refundAmount,
@@ -2401,7 +2401,7 @@ export class TasksService {
       actorId: admin.id.toString(),
       actorName: `${admin.firstName} ${admin.lastName}`,
       action: 'Task closed',
-      details: `Reason: ${dto.reason}. Note: ${dto.note}${refundAmount > 0 ? `. Refunded ₦${(refundAmount / 100).toFixed(2)}` : ''}`,
+      details: `Reason: ${dto.reason}. Note: ${dto.note}${refundAmount > 0 ? `. Refunded ₦${refundAmount.toFixed(2)}` : ''}`,
       metadata: {
         reason: dto.reason,
         refundAmount,
@@ -2418,7 +2418,7 @@ export class TasksService {
           task.postedBy,
           NotificationType.TASK_STATUS_CHANGED,
           'Task closed',
-          `Your task "${task.title}" has been closed by admin. Reason: ${dto.reason}${refundAmount > 0 ? `. Refund of ₦${(refundAmount / 100).toFixed(2)} processed.` : ''}`,
+          `Your task "${task.title}" has been closed by admin. Reason: ${dto.reason}${refundAmount > 0 ? `. Refund of ₦${refundAmount.toFixed(2)} processed.` : ''}`,
           task,
         );
       }
