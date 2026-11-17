@@ -88,7 +88,8 @@
     "typescript-eslint": "^8.20.0"
   },
   "overrides": {
-    "form-data": "^4.0.6"
+    "form-data": "^4.0.6",
+    "qs": "^6.16.1"
   },
   "jest": {
     "moduleFileExtensions": [
