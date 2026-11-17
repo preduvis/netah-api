@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, UnauthorizedException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository, EntityManager } from '@mikro-orm/postgresql';
 import { User } from 'src/users/entities/user.entity';
@@ -11,6 +11,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { UpdateProfileVisibilityDto } from './dto/update-profile-visibility.dto';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+import { UsersService } from 'src/users/users.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -27,6 +28,9 @@ export class ProfileService {
 
     private readonly em: EntityManager,
     private readonly cloudinaryService: CloudinaryService,
+
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
   ) {}
 
   async getUserReviews(userUuid: string) {
@@ -279,7 +283,7 @@ export class ProfileService {
     };
   }
 
-  async updateProfile(userId: number, updateProfileDto: UpdateProfileDto): Promise<User> {
+  async updateProfile(userId: number, updateProfileDto: UpdateProfileDto, req?: any): Promise<User> {
     const user = await this.userRepo.findOne({ id: userId });
 
     if (!user) {
@@ -287,9 +291,9 @@ export class ProfileService {
     }
 
     // Check if email is being updated and if it already exists
-    if (updateProfileDto.email && updateProfileDto.email !== user.email) {
+    if (updateProfileDto.email && updateProfileDto.email.toLowerCase() !== user.email.toLowerCase()) {
       const existingUser = await this.userRepo.findOne({
-        email: updateProfileDto.email,
+        email: { $ilike: updateProfileDto.email },
       });
 
       if (existingUser) {
@@ -308,6 +312,11 @@ export class ProfileService {
       }
     }
 
+    // Track what fields were updated for logging
+    const updatedFields = Object.keys(updateProfileDto).filter(
+      (key) => updateProfileDto[key as keyof UpdateProfileDto] !== undefined
+    );
+
     // Filter out undefined values to avoid assignment errors
     const filteredDto = Object.fromEntries(
       Object.entries(updateProfileDto).filter(([_, value]) => value !== undefined)
@@ -315,10 +324,24 @@ export class ProfileService {
 
     this.userRepo.assign(user, filteredDto);
     await this.em.flush();
+
+    // Log profile update activity
+    const ipAddress = req?.ip || req?.connection?.remoteAddress;
+    const userAgent = req?.get?.('user-agent');
+    await this.usersService.logUserActivity({
+      user,
+      type: 'PROFILE_UPDATED' as any,
+      action: 'Profile updated',
+      details: `Updated fields: ${updatedFields.join(', ')}`,
+      metadata: { updatedFields },
+      ipAddress,
+      userAgent,
+    });
+
     return user;
   }
 
-  async changePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<void> {
+  async changePassword(userId: number, changePasswordDto: ChangePasswordDto, req?: any): Promise<void> {
     const user = await this.userRepo.findOne({ id: userId });
 
     if (!user) {
@@ -338,6 +361,17 @@ export class ProfileService {
     // Update to new password (will be hashed by @BeforeUpdate hook)
     user.password = changePasswordDto.newPassword;
     await this.em.flush();
+
+    // Log password change activity
+    const ipAddress = req?.ip || req?.connection?.remoteAddress;
+    const userAgent = req?.get?.('user-agent');
+    await this.usersService.logUserActivity({
+      user,
+      type: 'PASSWORD_CHANGED' as any,
+      action: 'Password changed',
+      ipAddress,
+      userAgent,
+    });
   }
 
   async getNotificationPreferences(userId: number) {
@@ -546,7 +580,7 @@ export class ProfileService {
     return profile;
   }
 
-  async uploadProfileImage(userId: number, file: Express.Multer.File) {
+  async uploadProfileImage(userId: number, file: Express.Multer.File, req?: any) {
     const user = await this.userRepo.findOne(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -565,12 +599,23 @@ export class ProfileService {
     user.profileImagePublicId = publicId;
     await this.em.flush();
 
+    // Log profile image upload activity
+    const ipAddress = req?.ip || req?.connection?.remoteAddress;
+    const userAgent = req?.get?.('user-agent');
+    await this.usersService.logUserActivity({
+      user,
+      type: 'PROFILE_IMAGE_CHANGED' as any,
+      action: 'Profile image uploaded',
+      ipAddress,
+      userAgent,
+    });
+
     return {
       profileImage: url,
     };
   }
 
-  async deleteProfileImage(userId: number) {
+  async deleteProfileImage(userId: number, req?: any) {
     const user = await this.userRepo.findOne(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -589,6 +634,17 @@ export class ProfileService {
     user.profileImage = undefined;
     user.profileImagePublicId = undefined;
     await this.em.flush();
+
+    // Log profile image deletion activity
+    const ipAddress = req?.ip || req?.connection?.remoteAddress;
+    const userAgent = req?.get?.('user-agent');
+    await this.usersService.logUserActivity({
+      user,
+      type: 'PROFILE_IMAGE_CHANGED' as any,
+      action: 'Profile image deleted',
+      ipAddress,
+      userAgent,
+    });
 
     return {
       message: 'Profile image deleted successfully',

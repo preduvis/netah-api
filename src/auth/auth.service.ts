@@ -27,7 +27,7 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
 
-  async login(createAuthDto: CreateAuthDto, res: Response) {
+  async login(createAuthDto: CreateAuthDto, res: Response, req?: any) {
     const user = await this.usersService.findOneByEmailWithPassword(createAuthDto.email);
     if (!user) throw new UnauthorizedException('Invalid Credentials');
 
@@ -49,11 +49,22 @@ export class AuthService {
       maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
     });
 
+    // Log login activity
+    const ipAddress = req?.ip || req?.connection?.remoteAddress;
+    const userAgent = req?.get('user-agent');
+    await this.usersService.logUserActivity({
+      user,
+      type: 'LOGIN' as any,
+      action: 'User logged in',
+      ipAddress,
+      userAgent,
+    });
+
     // Return token in body for mobile/incognito clients that can't persist cookies
     return { access_token: token };
   }
 
-  async register(signupDto: CreateUserDto, res: Response) {
+  async register(signupDto: CreateUserDto, res: Response, req?: any) {
     const existingEmail = await this.usersService.findOneByEmailWithPassword(signupDto.email);
     const existingPhone = await this.usersService.findOneByPhoneNumber(signupDto.phoneNumber);
 
@@ -77,6 +88,17 @@ export class AuthService {
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
       maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+    });
+
+    // Log registration activity
+    const ipAddress = req?.ip || req?.connection?.remoteAddress;
+    const userAgent = req?.get('user-agent');
+    await this.usersService.logUserActivity({
+      user,
+      type: 'LOGIN' as any, // First login after registration
+      action: 'User registered and logged in',
+      ipAddress,
+      userAgent,
     });
 
     // Return token in body for mobile/incognito clients that can't persist cookies
@@ -133,7 +155,7 @@ export class AuthService {
     return { message: 'OTP verified successfully' };
   }
 
-  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+  async resetPassword(resetPasswordDto: ResetPasswordDto, req?: any) {
     const user = await this.usersService.findOneByEmailWithPassword(resetPasswordDto.email);
     if (!user) {
       throw new BadRequestException('User with this email does not exist');
@@ -155,6 +177,17 @@ export class AuthService {
     user.passwordResetOtp = undefined;
     user.passwordResetOtpExpiry = undefined;
     await this.usersService.update(user.id, user);
+
+    // Log password reset activity
+    const ipAddress = req?.ip || req?.connection?.remoteAddress;
+    const userAgent = req?.get('user-agent');
+    await this.usersService.logUserActivity({
+      user,
+      type: 'PASSWORD_CHANGED' as any,
+      action: 'Password reset via OTP',
+      ipAddress,
+      userAgent,
+    });
 
     return { message: 'Password reset successful' };
   }

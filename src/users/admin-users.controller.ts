@@ -6,6 +6,7 @@ import {
   Delete,
   Patch,
   Body,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { ResponseMessage } from 'src/response/response.decorator';
@@ -22,27 +23,43 @@ export class AdminUsersController {
 
   @ResponseMessage('All users retrieved successfully!')
   @Get()
-  findAllUsers() {
-    return this.usersService.adminFindAllUsers();
+  findAllUsers(
+    @Query('search') search?: string,
+    @Query('status') status?: 'active' | 'inactive',
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('sort') sort?: 'created_asc' | 'created_desc' | 'name_asc' | 'name_desc',
+  ) {
+    return this.usersService.adminFindAllUsers({
+      search,
+      status,
+      fromDate,
+      toDate,
+      page,
+      pageSize,
+      sort,
+    });
   }
 
   @ResponseMessage('User retrieved successfully!')
-  @Get(':id')
-  findUserById(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+  @Get(':uuid')
+  findUserById(@Param('uuid') uuid: string) {
+    return this.usersService.adminGetUserByUuid(uuid);
   }
 
   @ResponseMessage('User updated successfully!')
-  @Patch(':id')
-  updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(+id, updateUserDto);
+  @Patch(':uuid')
+  updateUser(@Param('uuid') uuid: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.updateByUuid(uuid, updateUserDto);
   }
 
   @ResponseMessage('User deleted successfully!')
   @UseGuards(SuperAdminGuard)
-  @Delete(':id')
-  deleteUser(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+  @Delete(':uuid')
+  deleteUser(@Param('uuid') uuid: string) {
+    return this.usersService.removeByUuid(uuid);
   }
 
   @ResponseMessage('User statistics retrieved successfully!')
@@ -52,8 +69,49 @@ export class AdminUsersController {
   }
 
   @ResponseMessage('User tasks retrieved successfully!')
-  @Get(':id/tasks')
-  getUserTasks(@Param('id') id: string) {
-    return this.usersService.adminGetUserTasks(+id);
+  @Get(':uuid/tasks')
+  getUserTasks(
+    @Param('uuid') uuid: string,
+    @Query('role') role?: 'poster' | 'runner' | 'all',
+    @Query('status') status?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    return this.usersService.adminGetUserTasksByUuid(uuid, {
+      role,
+      status,
+      page,
+      pageSize,
+    });
+  }
+
+  @ResponseMessage('User activity retrieved successfully!')
+  @Get(':uuid/activity')
+  getUserActivity(
+    @Param('uuid') uuid: string,
+    @Query('type') type?: string,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+  ) {
+    return this.usersService.adminGetUserActivityByUuid(uuid, {
+      type: type as any,
+      limit,
+      offset,
+    });
+  }
+
+  @ResponseMessage('User payments retrieved successfully!')
+  @Get(':uuid/payments')
+  getUserPayments(
+    @Param('uuid') uuid: string,
+    @Query('status') status?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    return this.usersService.adminGetUserPaymentsByUuid(uuid, {
+      status,
+      page,
+      pageSize,
+    });
   }
 }

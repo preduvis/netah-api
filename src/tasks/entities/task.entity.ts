@@ -54,6 +54,10 @@ export class Task {
   @Enum(() => TaskStatusEnum)
   status: TaskStatusEnum = TaskStatusEnum.OPEN;
 
+  @Property({ type: 'text', nullable: true })
+  @Enum(() => TaskStatusEnum)
+  previousStatus?: TaskStatusEnum;
+
   @Property({ default: 0 })
 bidsCount: number & Opt = 0;
 

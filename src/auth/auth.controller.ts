@@ -1,8 +1,8 @@
-import { Controller, Post, Body, Res, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, Res, Req, UseGuards, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { ResponseMessage } from 'src/response/response.decorator';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user-decorator';
@@ -20,8 +20,9 @@ export class AuthController {
   login(
     @Body() createAuthDto: CreateAuthDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
   ) {
-    return this.authService.login(createAuthDto, res);
+    return this.authService.login(createAuthDto, res, req);
   }
 
   @ResponseMessage('Sign up successful!')
@@ -29,8 +30,9 @@ export class AuthController {
   register(
     @Body() signUpDto: CreateUserDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
   ) {
-    return this.authService.register(signUpDto, res);
+    return this.authService.register(signUpDto, res, req);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -53,7 +55,10 @@ export class AuthController {
 
   @ResponseMessage('Password reset successful')
   @Post('reset-password')
-  resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
-    return this.authService.resetPassword(resetPasswordDto);
+  resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.resetPassword(resetPasswordDto, req);
   }
 }

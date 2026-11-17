@@ -10,7 +10,9 @@ import {
   UploadedFile,
   BadRequestException,
   Delete,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProfileService } from './profile.service';
 import { ResponseMessage } from 'src/response/response.decorator';
@@ -39,8 +41,9 @@ export class ProfileController {
   updateProfile(
     @CurrentUser() currentUser: User,
     @Body() updateProfileDto: UpdateProfileDto,
+    @Req() req: Request,
   ) {
-    return this.profileService.updateProfile(currentUser.id, updateProfileDto);
+    return this.profileService.updateProfile(currentUser.id, updateProfileDto, req);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -50,6 +53,7 @@ export class ProfileController {
   async uploadProfileImage(
     @CurrentUser() currentUser: User,
     @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
@@ -65,14 +69,17 @@ export class ProfileController {
       throw new BadRequestException('File size must be less than 5MB');
     }
 
-    return this.profileService.uploadProfileImage(currentUser.id, file);
+    return this.profileService.uploadProfileImage(currentUser.id, file, req);
   }
 
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Profile image deleted successfully!')
   @Delete('me/delete-image')
-  deleteProfileImage(@CurrentUser() currentUser: User) {
-    return this.profileService.deleteProfileImage(currentUser.id);
+  deleteProfileImage(
+    @CurrentUser() currentUser: User,
+    @Req() req: Request,
+  ) {
+    return this.profileService.deleteProfileImage(currentUser.id, req);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -81,8 +88,9 @@ export class ProfileController {
   changePassword(
     @CurrentUser() currentUser: User,
     @Body() changePasswordDto: ChangePasswordDto,
+    @Req() req: Request,
   ) {
-    return this.profileService.changePassword(currentUser.id, changePasswordDto);
+    return this.profileService.changePassword(currentUser.id, changePasswordDto, req);
   }
 
   @UseGuards(JwtAuthGuard)

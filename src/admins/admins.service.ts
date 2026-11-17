@@ -33,11 +33,11 @@ export class AdminsService {
   }
 
   async findOneByEmail(email: string): Promise<Admin | null> {
-    return this.adminRepository.findOne({ email });
+    return this.adminRepository.findOne({ email: { $ilike: email } });
   }
 
   async findOneByEmailWithPassword(email: string): Promise<Admin | null> {
-    return this.adminRepository.findOne({ email }, { populate: ['password'] });
+    return this.adminRepository.findOne({ email: { $ilike: email } }, { populate: ['password'] });
   }
 
   async findOneByPhoneNumber(phoneNumber: string): Promise<Admin | null> {

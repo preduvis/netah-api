@@ -29,6 +29,21 @@ import { NotificationsService } from 'src/notifications/notifications.service';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { PaystackService } from './paystack.service';
 import { v4 as uuidv4 } from 'uuid';
+import { TaskFlag, FlagStatus, FlagSeverity, FlagReporterRole } from './entities/task-flag.entity';
+import { ModerationNote } from './entities/moderation-note.entity';
+import { TaskActivity, ActivityType, ActorRole } from './entities/task-activity.entity';
+import { AdminAuditLog } from './entities/admin-audit-log.entity';
+import { Admin } from 'src/admins/entities/admin.entity';
+import {
+  SuspendTaskDto,
+  CloseTaskDto,
+  ReopenTaskDto,
+  FlagTaskDto,
+  ClearFlagsDto,
+  ReleasePaymentDto,
+  RefundPaymentDto,
+  AddModerationNoteDto,
+} from './dto/admin-task-actions.dto';
 
 @Injectable()
 export class TasksService {
@@ -53,6 +68,18 @@ export class TasksService {
 
     @InjectRepository(User)
     private readonly userRepo: EntityRepository<User>,
+
+    @InjectRepository(TaskFlag)
+    private readonly taskFlagRepo: EntityRepository<TaskFlag>,
+
+    @InjectRepository(ModerationNote)
+    private readonly moderationNoteRepo: EntityRepository<ModerationNote>,
+
+    @InjectRepository(TaskActivity)
+    private readonly taskActivityRepo: EntityRepository<TaskActivity>,
+
+    @InjectRepository(AdminAuditLog)
+    private readonly adminAuditLogRepo: EntityRepository<AdminAuditLog>,
 
     private readonly notificationsService: NotificationsService,
     private readonly cloudinaryService: CloudinaryService,
@@ -133,6 +160,59 @@ export class TasksService {
     return publicUser;
   }
 
+  // Helper method for creating admin audit logs
+  private async createAdminAuditLog(data: {
+    admin: Admin;
+    action: string;
+    taskId?: string;
+    userId?: string;
+    note?: string;
+    ipAddress?: string;
+    beforeState?: Record<string, any>;
+    afterState?: Record<string, any>;
+    metadata?: Record<string, any>;
+  }) {
+    const auditLog = this.adminAuditLogRepo.create({
+      admin: data.admin,
+      action: data.action,
+      taskId: data.taskId,
+      userId: data.userId,
+      note: data.note,
+      ipAddress: data.ipAddress,
+      beforeState: data.beforeState,
+      afterState: data.afterState,
+      metadata: data.metadata,
+    });
+    await this.em.persist(auditLog);
+    return auditLog;
+  }
+
+  // Helper method for creating task activity logs
+  private async createTaskActivity(data: {
+    task: Task;
+    type: ActivityType;
+    actorRole: ActorRole;
+    actorId: string;
+    actorName: string;
+    action: string;
+    details?: string;
+    metadata?: Record<string, any>;
+  }) {
+    const activity = this.taskActivityRepo.create({
+      task: data.task,
+      type: data.type,
+      actorRole: data.actorRole,
+      actorId: data.actorId,
+      actorName: data.actorName,
+      action: data.action,
+      details: data.details,
+      metadata: data.metadata,
+    });
+    await this.em.persist(activity);
+    return activity;
+  }
+
+
   async create(createTaskDto: CreateTaskDto, currentUser: User) {
     const category = await this.taskCategoryRepo.findOne({
       id: createTaskDto?.categoryId,
@@ -161,7 +241,50 @@ export class TasksService {
     });
 
     await this.em.persistAndFlush(task);
-    return task;
+
+    // Log task creation activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.CREATION,
+      actorRole: ActorRole.POSTER,
+      actorId: user.uuid || user.id.toString(),
+      actorName: `${user.firstName} ${user.lastName}`,
+      action: 'Created task',
+      details: `Task created with reward ₦${(task.reward / 100).toFixed(2)}`,
+      metadata: {
+        reward: task.reward,
+        category: category.name,
+        deadline: task.deadline,
+      },
+    });
+
+    await this.em.flush();
+
+    // Return serialized task with converted amounts
+    return {
+      id: task.id,
+      publicId: task.publicId,
+      title: task.title,
+      description: task.description,
+      location: task.location,
+      reward: task.reward,
+      deadline: task.deadline,
+      requirements: task.requirements,
+      images: task.images,
+      status: task.status,
+      bidsCount: task.bidsCount,
+      createdAt: task.createdAt,
+      category: {
+        id: category.id,
+        name: category.name,
+      },
+      postedBy: {
+        id: user.id,
+        uuid: user.uuid,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+    };
   }
 
   async findAll(currentUser?: User) {
@@ -370,6 +493,23 @@ export class TasksService {
     });
 
     await this.em.persistAndFlush(bidHistory);
+
+    // Log bid activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.BID,
+      actorRole: ActorRole.RUNNER,
+      actorId: bidder.uuid || bidder.id.toString(),
+      actorName: `${bidder.firstName} ${bidder.lastName}`,
+      action: `Placed bid of ₦${(taskBid.amount / 100).toFixed(2)}`,
+      details: createTaskBidDto.message || undefined,
+      metadata: {
+        amount: createTaskBidDto.amount,
+        bidId: taskBid.id,
+      },
+    });
+
+    await this.em.flush();
 
     // Notify task poster of new bid
     await this.notificationsService.createNotification(
@@ -604,6 +744,24 @@ export class TasksService {
 
     await this.em.persistAndFlush([taskBid, bidHistory]);
 
+    // Log counter offer activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.BID,
+      actorRole: isTaskPoster ? ActorRole.POSTER : ActorRole.RUNNER,
+      actorId: counteringUser.uuid || counteringUser.id.toString(),
+      actorName: `${counteringUser.firstName} ${counteringUser.lastName}`,
+      action: `Counter offer: ₦${(taskBid.amount / 100).toFixed(2)}`,
+      details: counterTaskBidDto.message || undefined,
+      metadata: {
+        amount: counterTaskBidDto.amount,
+        bidId: taskBid.id,
+        counterOfferBy: isTaskPoster ? 'CLIENT' : 'RUNNER',
+      },
+    });
+
+    await this.em.flush();
+
     // Notify the other party of counter offer
     const notificationRecipient = isTaskPoster ? taskBid.createdBy : task.postedBy;
     const notificationType = isTaskPoster
@@ -657,7 +815,7 @@ export class TasksService {
     const bidHistory = await this.taskBidNegotiationRepo.find(
       { taskBid },
       {
-        orderBy: { createdAt: 'ASC' },
+        orderBy: { createdAt: 'DESC' },
         populate: ['createdBy'],
       },
     );
@@ -860,7 +1018,7 @@ export class TasksService {
     // Initialize Paystack transaction
     const paystackResponse = await this.paystackService.initializeTransaction({
       email: currentUser.email,
-      amount: Math.round(totalAmount * 100), // Convert to kobo
+      amount: Math.round(totalAmount * 100), // Convert naira to kobo for Paystack
       reference: paymentReference,
       callback_url: `${process.env.FRONTEND_URL}/payment/callback?reference=${paymentReference}`,
       metadata: {
@@ -947,6 +1105,57 @@ export class TasksService {
 
     await this.em.persistAndFlush([payment, taskBid, task, ...otherBids]);
 
+    // Log assignment activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.ASSIGNMENT,
+      actorRole: ActorRole.POSTER,
+      actorId: payment.paidBy.uuid || payment.paidBy.id.toString(),
+      actorName: `${payment.paidBy.firstName} ${payment.paidBy.lastName}`,
+      action: 'Task assigned to runner',
+      details: `Bid accepted: ₦${(payment.bidAmount / 100).toFixed(2)}`,
+      metadata: {
+        runnerId: taskBid.createdBy.id,
+        runnerName: `${taskBid.createdBy.firstName} ${taskBid.createdBy.lastName}`,
+        amount: payment.bidAmount,
+      },
+    });
+
+    // Log payment activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.PAYMENT,
+      actorRole: ActorRole.SYSTEM,
+      actorId: 'system',
+      actorName: 'System',
+      action: 'Payment verified and escrowed',
+      details: `Total: ₦${(payment.totalAmount / 100).toFixed(2)} (Bid: ₦${(payment.bidAmount / 100).toFixed(2)} + Fee: ₦${(payment.serviceCharge / 100).toFixed(2)})`,
+      metadata: {
+        paymentId: payment.id,
+        reference: payment.paymentReference,
+        bidAmount: payment.bidAmount,
+        serviceCharge: payment.serviceCharge,
+        totalAmount: payment.totalAmount,
+      },
+    });
+
+    // Log status change activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.STATUS_CHANGE,
+      actorRole: ActorRole.SYSTEM,
+      actorId: 'system',
+      actorName: 'System',
+      action: 'Task status changed to IN_PROGRESS',
+      details: 'Payment verified, task started',
+      metadata: {
+        previousStatus: 'OPEN',
+        newStatus: 'IN_PROGRESS',
+      },
+    });
+
+    await this.em.flush();
+
     // Notify runner of task assignment
     await this.notificationsService.createNotification(
       taskBid.createdBy,
@@ -1020,6 +1229,24 @@ export class TasksService {
 
     await this.em.flush();
 
+    // Log bid rejection activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.BID,
+      actorRole: ActorRole.POSTER,
+      actorId: currentUser.uuid || currentUser.id.toString(),
+      actorName: `${currentUser.firstName} ${currentUser.lastName}`,
+      action: 'Bid rejected',
+      details: `Rejected bid of ₦${(taskBid.amount / 100).toFixed(2)} from ${taskBid.createdBy.firstName} ${taskBid.createdBy.lastName}`,
+      metadata: {
+        bidId: taskBid.id,
+        amount: taskBid.amount,
+        runnerId: taskBid.createdBy.id,
+      },
+    });
+
+    await this.em.flush();
+
     // Notify runner of bid rejection
     await this.notificationsService.createNotification(
       taskBid.createdBy,
@@ -1075,6 +1302,23 @@ export class TasksService {
     // Soft delete the bid
     taskBid.status = TaskBidStatus.REJECTED;
     taskBid.deletedAt = new Date();
+
+    await this.em.flush();
+
+    // Log bid withdrawal activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.BID,
+      actorRole: ActorRole.RUNNER,
+      actorId: currentUser.uuid || currentUser.id.toString(),
+      actorName: `${currentUser.firstName} ${currentUser.lastName}`,
+      action: 'Bid withdrawn',
+      details: `Withdrew bid of ₦${(taskBid.amount / 100).toFixed(2)}`,
+      metadata: {
+        bidId: taskBid.id,
+        amount: taskBid.amount,
+      },
+    });
 
     await this.em.flush();
 
@@ -1176,6 +1420,23 @@ export class TasksService {
 
     await this.em.flush();
 
+    // Log status change activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.STATUS_CHANGE,
+      actorRole: ActorRole.RUNNER,
+      actorId: task.assignedTo.uuid || task.assignedTo.id.toString(),
+      actorName: `${task.assignedTo.firstName} ${task.assignedTo.lastName}`,
+      action: 'Task marked as completed',
+      details: 'Awaiting poster approval',
+      metadata: {
+        previousStatus: 'IN_PROGRESS',
+        newStatus: 'PENDING_APPROVAL',
+      },
+    });
+
+    await this.em.flush();
+
     // Notify poster that task is ready for approval
     await this.notificationsService.createNotification(
       task.postedBy,
@@ -1224,6 +1485,50 @@ export class TasksService {
     task.feedback = approveTaskDto.feedback;
     task.status = TaskStatusEnum.COMPLETED;
     task.completedAt = new Date();
+
+    await this.em.flush();
+
+    // Log status change to COMPLETED
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.STATUS_CHANGE,
+      actorRole: ActorRole.POSTER,
+      actorId: currentUser.uuid || currentUser.id.toString(),
+      actorName: `${currentUser.firstName} ${currentUser.lastName}`,
+      action: 'Task approved and completed',
+      details: `Rated ${approveTaskDto.rating} stars${approveTaskDto.feedback ? `: "${approveTaskDto.feedback}"` : ''}`,
+      metadata: {
+        previousStatus: 'PENDING_APPROVAL',
+        newStatus: 'COMPLETED',
+        rating: approveTaskDto.rating,
+      },
+    });
+
+    // Log payment release
+    const acceptedBid = await this.taskBidRepo.findOne({
+      task,
+      status: TaskBidStatus.ACCEPTED,
+    });
+
+    if (acceptedBid) {
+      const payment = await this.paymentRepo.findOne({ taskBid: acceptedBid });
+
+      if (payment) {
+        await this.createTaskActivity({
+          task,
+          type: ActivityType.PAYMENT,
+          actorRole: ActorRole.SYSTEM,
+          actorId: 'system',
+          actorName: 'System',
+          action: 'Payment released to runner',
+          details: `Amount: ₦${(payment.bidAmount / 100).toFixed(2)}`,
+          metadata: {
+            paymentId: payment.id,
+            amount: payment.bidAmount,
+          },
+        });
+      }
+    }
 
     await this.em.flush();
 
@@ -1285,8 +1590,27 @@ export class TasksService {
       throw new BadRequestException('Runner can only dispute in-progress or pending approval tasks');
     }
 
+    const previousStatus = task.status;
     task.status = TaskStatusEnum.DISPUTED;
     task.disputeReason = disputeTaskDto.reason;
+
+    await this.em.flush();
+
+    // Log dispute activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.STATUS_CHANGE,
+      actorRole: isPoster ? ActorRole.POSTER : ActorRole.RUNNER,
+      actorId: currentUser.uuid || currentUser.id.toString(),
+      actorName: `${currentUser.firstName} ${currentUser.lastName}`,
+      action: 'Task disputed',
+      details: `Reason: ${disputeTaskDto.reason}`,
+      metadata: {
+        previousStatus,
+        newStatus: 'DISPUTED',
+        disputedBy: isPoster ? 'POSTER' : 'RUNNER',
+      },
+    });
 
     await this.em.flush();
 
@@ -1343,6 +1667,22 @@ export class TasksService {
 
     task.posterRating = reviewPosterDto.rating;
     task.posterReview = reviewPosterDto.review;
+
+    await this.em.flush();
+
+    // Log review activity
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.STATUS_CHANGE,
+      actorRole: ActorRole.RUNNER,
+      actorId: currentUser.uuid || currentUser.id.toString(),
+      actorName: `${currentUser.firstName} ${currentUser.lastName}`,
+      action: 'Reviewed task poster',
+      details: `Rated poster ${reviewPosterDto.rating} stars${reviewPosterDto.review ? `: "${reviewPosterDto.review}"` : ''}`,
+      metadata: {
+        rating: reviewPosterDto.rating,
+      },
+    });
 
     await this.em.flush();
 
@@ -1427,12 +1767,120 @@ export class TasksService {
   }
 
   // Admin methods
-  async adminFindAllTasks() {
-    const tasks = await this.taskRepo.findAll({
+  async adminFindAllTasks(options?: {
+    status?: TaskStatusEnum;
+    search?: string;
+    categoryId?: number;
+    fromDate?: string;
+    toDate?: string;
+    hasFlagsOnly?: boolean;
+    page?: number;
+    pageSize?: number;
+    sort?: 'created_asc' | 'created_desc' | 'reward_asc' | 'reward_desc' | 'deadline_asc' | 'deadline_desc';
+  }) {
+    const page = options?.page || 1;
+    const pageSize = Math.min(options?.pageSize || 20, 100);
+    const offset = (page - 1) * pageSize;
+
+    // Build filter
+    const filter: any = {};
+
+    if (options?.status) {
+      filter.status = options.status;
+    }
+
+    if (options?.categoryId) {
+      filter.category = options.categoryId;
+    }
+
+    if (options?.search) {
+      filter.$or = [
+        { title: { $ilike: `%${options.search}%` } },
+        { description: { $ilike: `%${options.search}%` } },
+        { publicId: { $ilike: `%${options.search}%` } },
+      ];
+    }
+
+    if (options?.fromDate) {
+      filter.createdAt = { $gte: new Date(options.fromDate) };
+    }
+
+    if (options?.toDate) {
+      if (!filter.createdAt) filter.createdAt = {};
+      filter.createdAt.$lte = new Date(options.toDate);
+    }
+
+    // Build orderBy
+    let orderBy: any = { createdAt: 'DESC' };
+    if (options?.sort === 'created_asc') orderBy = { createdAt: 'ASC' };
+    else if (options?.sort === 'created_desc') orderBy = { createdAt: 'DESC' };
+    else if (options?.sort === 'reward_asc') orderBy = { reward: 'ASC' };
+    else if (options?.sort === 'reward_desc') orderBy = { reward: 'DESC' };
+    else if (options?.sort === 'deadline_asc') orderBy = { deadline: 'ASC' };
+    else if (options?.sort === 'deadline_desc') orderBy = { deadline: 'DESC' };
+
+    // Get tasks with pagination
+    const [tasks, total] = await this.taskRepo.findAndCount(filter, {
       populate: ['postedBy', 'category', 'assignedTo'],
-      orderBy: { createdAt: 'DESC' },
+      orderBy,
+      limit: pageSize,
+      offset,
     });
-    return tasks;
+
+    // Get additional info for each task
+    const enrichedTasks = await Promise.all(
+      tasks.map(async (task) => {
+        const bidCount = await this.taskBidRepo.count({ task });
+        const flagsCount = await this.taskFlagRepo.count({
+          task,
+          status: FlagStatus.OPEN,
+        });
+
+        return {
+          id: task.publicId,
+          title: task.title,
+          status: task.status,
+          reward: task.reward,
+          deadline: task.deadline,
+          createdAt: task.createdAt,
+          category: {
+            id: task.category.id,
+            name: task.category.name,
+          },
+          poster: {
+            id: task.postedBy.id,
+            uuid: task.postedBy.uuid,
+            firstName: task.postedBy.firstName,
+            lastName: task.postedBy.lastName,
+          },
+          assignedTo: task.assignedTo
+            ? {
+                id: task.assignedTo.id,
+                uuid: task.assignedTo.uuid,
+                firstName: task.assignedTo.firstName,
+                lastName: task.assignedTo.lastName,
+              }
+            : null,
+          bidCount,
+          flagsCount,
+          hasFlags: flagsCount > 0,
+        };
+      }),
+    );
+
+    // Apply hasFlagsOnly filter if specified (post-fetch since it requires count)
+    let filteredTasks = enrichedTasks;
+    if (options?.hasFlagsOnly) {
+      filteredTasks = enrichedTasks.filter((t) => t.hasFlags);
+    }
+
+    return {
+      tasks: filteredTasks,
+      total: options?.hasFlagsOnly ? filteredTasks.length : total,
+      page,
+      pageSize,
+      totalPages: Math.ceil((options?.hasFlagsOnly ? filteredTasks.length : total) / pageSize),
+    };
   }
 
   async adminFindTaskById(publicId: string) {
@@ -1485,6 +1933,1039 @@ export class TasksService {
       inProgressTasks,
       completedTasks,
       disputedTasks,
+    };
+  }
+
+  // Enhanced admin task detail with full relations
+  async adminGetTaskDetailFull(publicId: string) {
+    const task = await this.taskRepo.findOne(
+      { publicId },
+      {
+        populate: ['postedBy', 'assignedTo', 'category'],
+      },
+    );
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Get payment if exists
+    const acceptedBid = await this.taskBidRepo.findOne({
+      task,
+      status: TaskBidStatus.ACCEPTED,
+    });
+
+    let payment: Payment | null = null;
+    if (acceptedBid) {
+      payment = await this.paymentRepo.findOne({ taskBid: acceptedBid });
+    }
+
+    // Get bid count
+    const bidCount = await this.taskBidRepo.count({ task });
+
+    // Get open flags
+    const flags = await this.taskFlagRepo.find({
+      task,
+      status: FlagStatus.OPEN,
+    });
+
+    // Get moderation notes
+    const moderationNotes = await this.moderationNoteRepo.find(
+      { task },
+      {
+        populate: ['author'],
+        orderBy: { createdAt: 'DESC' },
+      },
+    );
+
+    // Helper to serialize user with stats for admin view
+    const serializeUserWithStats = async (user: User | null) => {
+      if (!user) return null;
+
+      const tasksPosted = await this.taskRepo.count({ postedBy: user });
+      const tasksCompleted = await this.taskRepo.count({
+        assignedTo: user,
+        status: TaskStatusEnum.COMPLETED,
+      });
+
+      // Calculate rating
+      const runnerReviews = await this.taskRepo.find({
+        assignedTo: user,
+        status: TaskStatusEnum.COMPLETED,
+        rating: { $ne: null },
+      });
+
+      const posterReviews = await this.taskRepo.find({
+        postedBy: user,
+        status: TaskStatusEnum.COMPLETED,
+        posterRating: { $ne: null },
+      });
+
+      const allRatings = [
+        ...runnerReviews.map((t) => t.rating!),
+        ...posterReviews.map((t) => t.posterRating!),
+      ];
+
+      const avgRating =
+        allRatings.length > 0
+          ? parseFloat((allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length).toFixed(1))
+          : 0;
+
+      return {
+        id: user.id,
+        uuid: user.uuid || `user-${user.id}`,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phoneNumber,
+        avatar: user.profileImage,
+        rating: avgRating,
+        tasksPosted,
+        tasksCompleted,
+        joinedAt: user.createdAt,
+        verificationStatus: 'UNVERIFIED', // TODO: Add verification status to User entity
+      };
+    };
+
+    return {
+      id: task.publicId,
+      title: task.title,
+      category: {
+        id: task.category.id,
+        name: task.category.name,
+      },
+      description: task.description,
+      status: task.status,
+      reward: task.reward,
+      location: task.location,
+      createdAt: task.createdAt,
+      updatedAt: task.createdAt, // Task doesn't have updatedAt, using createdAt
+      deadline: task.deadline,
+      poster: await serializeUserWithStats(task.postedBy),
+      assignedTo: task.assignedTo ? await serializeUserWithStats(task.assignedTo) : null,
+      requirements: task.requirements || [],
+      images: (task.images || []).map((img) => img.url),
+      payment: payment
+        ? {
+            id: payment.id,
+            publicId: payment.publicId,
+            status: payment.status,
+            amount: payment.totalAmount,
+            currency: 'NGN',
+            escrowedAt: payment.escrowedAt,
+            releasedAt: payment.releasedAt,
+            refundedAt: payment.refundedAt,
+          }
+        : null,
+      bidCount,
+      flags: flags.map((flag) => ({
+        id: flag.id,
+        reason: flag.reason,
+        details: flag.details,
+        reportedBy: {
+          id: flag.reportedByUserId || flag.reportedByAdminId,
+          name: flag.reportedByName,
+          role: flag.reportedByRole,
+        },
+        createdAt: flag.createdAt,
+        status: flag.status,
+        severity: flag.severity,
+      })),
+      moderationNotes: moderationNotes.map((note) => ({
+        id: note.id,
+        content: note.content,
+        author: {
+          id: note.author.id,
+          name: `${note.author.firstName} ${note.author.lastName}`,
+        },
+        createdAt: note.createdAt,
+      })),
+    };
+  }
+
+  // Enhanced admin get task bids with detailed filters
+  async adminGetTaskBidsDetailed(
+    publicId: string,
+    options?: {
+      status?: string;
+      sort?: 'created_asc' | 'created_desc' | 'amount_asc' | 'amount_desc';
+      page?: number;
+      pageSize?: number;
+    },
+  ) {
+    const task = await this.taskRepo.findOne({ publicId });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const page = options?.page || 1;
+    const pageSize = Math.min(options?.pageSize || 20, 100);
+    const offset = (page - 1) * pageSize;
+
+    // Build filter
+    const filter: any = { task };
+    if (options?.status) {
+      filter.status = options.status;
+    }
+
+    // Build orderBy
+    let orderBy: any = { createdAt: 'DESC' };
+    if (options?.sort === 'created_asc') orderBy = { createdAt: 'ASC' };
+    else if (options?.sort === 'created_desc') orderBy = { createdAt: 'DESC' };
+    else if (options?.sort === 'amount_asc') orderBy = { amount: 'ASC' };
+    else if (options?.sort === 'amount_desc') orderBy = { amount: 'DESC' };
+
+    // Get bids with pagination
+    const [bids, total] = await this.taskBidRepo.findAndCount(filter, {
+      populate: ['createdBy'],
+      orderBy,
+      limit: pageSize,
+      offset,
+    });
+
+    // Serialize bid data
+    const serializedBids = await Promise.all(
+      bids.map(async (bid) => {
+        const runnerTasksCompleted = await this.taskRepo.count({
+          assignedTo: bid.createdBy,
+          status: TaskStatusEnum.COMPLETED,
+        });
+
+        return {
+          id: bid.id,
+          taskId: publicId,
+          runner: {
+            id: bid.createdBy.id,
+            uuid: bid.createdBy.uuid,
+            firstName: bid.createdBy.firstName,
+            lastName: bid.createdBy.lastName,
+            avatar: bid.createdBy.profileImage,
+            rating: 0, // Could calculate if needed
+            tasksCompleted: runnerTasksCompleted,
+            verificationStatus: 'UNVERIFIED', // TODO: Add verification status to User entity
+          },
+          amount: bid.amount,
+          message: bid.message,
+          status: bid.status,
+          counterOffer: null, // TODO: if needed
+          createdAt: bid.createdAt,
+          updatedAt: bid.createdAt, // Using createdAt as updatedAt not tracked
+        };
+      }),
+    );
+
+    return {
+      bids: serializedBids,
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  // Get task activity log
+  async adminGetTaskActivity(
+    publicId: string,
+    options?: {
+      type?: ActivityType;
+      limit?: number;
+      offset?: number;
+    },
+  ) {
+    const task = await this.taskRepo.findOne({ publicId });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const limit = Math.min(options?.limit || 100, 500);
+    const offset = options?.offset || 0;
+
+    // Build filter
+    const filter: any = { task };
+    if (options?.type) {
+      filter.type = options.type;
+    }
+
+    // Get activities
+    const [activities, total] = await this.taskActivityRepo.findAndCount(filter, {
+      orderBy: { timestamp: 'DESC' },
+      limit,
+      offset,
+    });
+
+    return {
+      activities: activities.map((activity) => ({
+        id: activity.id,
+        timestamp: activity.timestamp,
+        type: activity.type,
+        actor: {
+          id: activity.actorId,
+          name: activity.actorName,
+          role: activity.actorRole,
+        },
+        action: activity.action,
+        details: activity.details,
+        metadata: activity.metadata,
+      })),
+      total,
+      hasMore: offset + activities.length < total,
+    };
+  }
+
+  // Admin suspend task
+  async adminSuspendTask(publicId: string, dto: SuspendTaskDto, admin: Admin) {
+    const task = await this.taskRepo.findOne(
+      { publicId },
+      { populate: ['postedBy', 'assignedTo'] },
+    );
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Validate can suspend
+    if (task.status === TaskStatusEnum.COMPLETED) {
+      throw new BadRequestException('Cannot suspend completed tasks');
+    }
+
+    if (task.status === TaskStatusEnum.CANCELLED) {
+      throw new BadRequestException('Cannot suspend cancelled tasks');
+    }
+
+    if (task.status === TaskStatusEnum.SUSPENDED) {
+      throw new BadRequestException('Task is already suspended');
+    }
+
+    const beforeState = { status: task.status };
+
+    // Store previous status for restoration
+    task.previousStatus = task.status;
+    task.status = TaskStatusEnum.SUSPENDED;
+
+    const afterState = { status: task.status, previousStatus: task.previousStatus };
+
+    // Create audit log
+    await this.createAdminAuditLog({
+      admin,
+      action: 'TASK_SUSPENDED',
+      taskId: publicId,
+      note: dto.note,
+      beforeState,
+      afterState,
+      metadata: { reason: dto.reason },
+    });
+
+    // Create activity log
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.ADMIN_ACTION,
+      actorRole: ActorRole.ADMIN,
+      actorId: admin.id.toString(),
+      actorName: `${admin.firstName} ${admin.lastName}`,
+      action: 'Task suspended',
+      details: `Reason: ${dto.reason}. Note: ${dto.note}`,
+      metadata: { reason: dto.reason, previousStatus: task.previousStatus },
+    });
+
+    await this.em.flush();
+
+    // Notify users
+    if (dto.notifyUsers) {
+      if (task.postedBy) {
+        await this.notificationsService.createNotification(
+          task.postedBy,
+          NotificationType.TASK_STATUS_CHANGED,
+          'Task suspended',
+          `Your task "${task.title}" has been suspended by admin. Reason: ${dto.reason}`,
+          task,
+        );
+      }
+      if (task.assignedTo) {
+        await this.notificationsService.createNotification(
+          task.assignedTo,
+          NotificationType.TASK_STATUS_CHANGED,
+          'Task suspended',
+          `Task "${task.title}" has been suspended by admin. Reason: ${dto.reason}`,
+          task,
+        );
+      }
+    }
+
+    return {
+      id: task.publicId,
+      status: task.status,
+      previousStatus: task.previousStatus,
+      updatedAt: new Date(),
+    };
+  }
+
+  // Admin close task
+  async adminCloseTask(publicId: string, dto: CloseTaskDto, admin: Admin) {
+    const task = await this.taskRepo.findOne(
+      { publicId },
+      { populate: ['postedBy', 'assignedTo'] },
+    );
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (task.status === TaskStatusEnum.COMPLETED) {
+      throw new BadRequestException('Cannot close completed tasks');
+    }
+
+    if (task.status === TaskStatusEnum.CANCELLED) {
+      throw new BadRequestException('Task is already cancelled');
+    }
+
+    const beforeState = {
+      status: task.status,
+      assignedTo: task.assignedTo?.id,
+    };
+
+    // Store previous status
+    task.previousStatus = task.status;
+    task.status = TaskStatusEnum.CANCELLED;
+
+    // Handle escrowed payment refund if task was in progress
+    let refundAmount = 0;
+    if (task.assignedTo) {
+      const acceptedBid = await this.taskBidRepo.findOne({
+        task,
+        status: TaskBidStatus.ACCEPTED,
+      });
+
+      if (acceptedBid) {
+        const payment = await this.paymentRepo.findOne({ taskBid: acceptedBid });
+
+        if (payment && payment.status === PaymentStatus.ESCROWED) {
+          // Refund to poster
+          refundAmount = payment.totalAmount;
+          payment.status = PaymentStatus.REFUNDED;
+          payment.refundedAt = new Date();
+
+          await this.createTaskActivity({
+            task,
+            type: ActivityType.PAYMENT,
+            actorRole: ActorRole.SYSTEM,
+            actorId: 'system',
+            actorName: 'System',
+            action: 'Payment refunded to poster',
+            details: `Amount: ₦${(refundAmount / 100).toFixed(2)}`,
+            metadata: {
+              paymentId: payment.id,
+              amount: refundAmount,
+              reason: 'Task closed by admin',
+            },
+          });
+        }
+      }
+
+      // Clear assignment
+      task.assignedTo = undefined;
+    }
+
+    // Reject all pending bids
+    const pendingBids = await this.taskBidRepo.find({
+      task,
+      status: TaskBidStatus.PENDING,
+    });
+
+    for (const bid of pendingBids) {
+      bid.status = TaskBidStatus.REJECTED;
+      bid.deletedAt = new Date();
+    }
+
+    const afterState = {
+      status: task.status,
+      assignedTo: null,
+      refundAmount,
+      rejectedBids: pendingBids.length,
+    };
+
+    // Create audit log
+    await this.createAdminAuditLog({
+      admin,
+      action: 'TASK_CLOSED',
+      taskId: publicId,
+      note: dto.note,
+      beforeState,
+      afterState,
+      metadata: { reason: dto.reason },
+    });
+
+    // Create activity log
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.ADMIN_ACTION,
+      actorRole: ActorRole.ADMIN,
+      actorId: admin.id.toString(),
+      actorName: `${admin.firstName} ${admin.lastName}`,
+      action: 'Task closed',
+      details: `Reason: ${dto.reason}. Note: ${dto.note}${refundAmount > 0 ? `. Refunded ₦${(refundAmount / 100).toFixed(2)}` : ''}`,
+      metadata: {
+        reason: dto.reason,
+        refundAmount,
+        rejectedBids: pendingBids.length,
+      },
+    });
+
+    await this.em.flush();
+
+    // Notify users
+    if (dto.notifyUsers) {
+      if (task.postedBy) {
+        await this.notificationsService.createNotification(
+          task.postedBy,
+          NotificationType.TASK_STATUS_CHANGED,
+          'Task closed',
+          `Your task "${task.title}" has been closed by admin. Reason: ${dto.reason}${refundAmount > 0 ? `. Refund of ₦${(refundAmount / 100).toFixed(2)} processed.` : ''}`,
+          task,
+        );
+      }
+      if (beforeState.assignedTo) {
+        const runner = await this.userRepo.findOne({ id: beforeState.assignedTo });
+        if (runner) {
+          await this.notificationsService.createNotification(
+            runner,
+            NotificationType.TASK_STATUS_CHANGED,
+            'Task closed',
+            `Task "${task.title}" has been closed by admin. Reason: ${dto.reason}`,
+            task,
+          );
+        }
+      }
+    }
+
+    return {
+      id: task.publicId,
+      status: task.status,
+      refundAmount,
+      rejectedBids: pendingBids.length,
+      updatedAt: new Date(),
+    };
+  }
+
+  // Admin reopen task
+  async adminReopenTask(publicId: string, dto: ReopenTaskDto, admin: Admin) {
+    const task = await this.taskRepo.findOne(
+      { publicId },
+      { populate: ['postedBy', 'assignedTo'] },
+    );
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Can only reopen suspended or cancelled tasks
+    if (task.status !== TaskStatusEnum.SUSPENDED && task.status !== TaskStatusEnum.CANCELLED) {
+      throw new BadRequestException('Only suspended or cancelled tasks can be reopened');
+    }
+
+    const beforeState = { status: task.status };
+
+    // Restore to previous status or default to OPEN if previousStatus is null (legacy tasks)
+    const wasLegacyTask = !task.previousStatus;
+    const restoredStatus = task.previousStatus || TaskStatusEnum.OPEN;
+    task.status = restoredStatus;
+    task.previousStatus = undefined;
+
+    const afterState = { status: task.status };
+
+    // Create audit log
+    await this.createAdminAuditLog({
+      admin,
+      action: 'TASK_REOPENED',
+      taskId: publicId,
+      note: dto.note,
+      beforeState,
+      afterState,
+      metadata: { restoredTo: restoredStatus, wasLegacyTask },
+    });
+
+    // Create activity log
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.ADMIN_ACTION,
+      actorRole: ActorRole.ADMIN,
+      actorId: admin.id.toString(),
+      actorName: `${admin.firstName} ${admin.lastName}`,
+      action: 'Task reopened',
+      details: `${dto.note}. Restored to ${restoredStatus} status.`,
+      metadata: { restoredTo: restoredStatus },
+    });
+
+    await this.em.flush();
+
+    // Notify users
+    if (dto.notifyUsers) {
+      if (task.postedBy) {
+        await this.notificationsService.createNotification(
+          task.postedBy,
+          NotificationType.TASK_STATUS_CHANGED,
+          'Task reopened',
+          `Your task "${task.title}" has been reopened by admin and restored to ${restoredStatus} status.`,
+          task,
+        );
+      }
+      if (task.assignedTo) {
+        await this.notificationsService.createNotification(
+          task.assignedTo,
+          NotificationType.TASK_STATUS_CHANGED,
+          'Task reopened',
+          `Task "${task.title}" has been reopened by admin and restored to ${restoredStatus} status.`,
+          task,
+        );
+      }
+    }
+
+    return {
+      id: task.publicId,
+      status: task.status,
+      restoredTo: restoredStatus,
+      updatedAt: new Date(),
+    };
+  }
+
+  // Admin flag task
+  async adminFlagTask(publicId: string, dto: FlagTaskDto, admin: Admin) {
+    const task = await this.taskRepo.findOne({ publicId });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Create flag
+    const flag = this.taskFlagRepo.create({
+      task,
+      reason: dto.reason,
+      details: dto.details,
+      severity: dto.severity,
+      status: FlagStatus.OPEN,
+      reportedByRole: FlagReporterRole.ADMIN,
+      reportedByAdminId: admin.id,
+      reportedByName: `${admin.firstName} ${admin.lastName}`,
+    });
+
+    // Create audit log
+    await this.createAdminAuditLog({
+      admin,
+      action: 'TASK_FLAGGED',
+      taskId: publicId,
+      metadata: {
+        reason: dto.reason,
+        details: dto.details,
+        severity: dto.severity,
+      },
+    });
+
+    // Create activity log
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.FLAG,
+      actorRole: ActorRole.ADMIN,
+      actorId: admin.id.toString(),
+      actorName: `${admin.firstName} ${admin.lastName}`,
+      action: `Task flagged: ${dto.reason}`,
+      details: dto.details,
+      metadata: { severity: dto.severity },
+    });
+
+    await this.em.persistAndFlush(flag);
+
+    return {
+      flagId: flag.id,
+      taskId: publicId,
+      status: flag.status,
+      createdAt: flag.createdAt,
+    };
+  }
+
+  // Admin clear/resolve flags
+  async adminClearFlags(publicId: string, dto: ClearFlagsDto, admin: Admin) {
+    const task = await this.taskRepo.findOne({ publicId });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Find all open flags for this task
+    const openFlags = await this.taskFlagRepo.find({
+      task,
+      status: FlagStatus.OPEN,
+    });
+
+    // Update all flags to resolved
+    openFlags.forEach((flag) => {
+      flag.status = FlagStatus.RESOLVED;
+      flag.resolution = dto.note;
+      flag.resolvedBy = `${admin.firstName} ${admin.lastName}`;
+      flag.resolvedAt = new Date();
+    });
+
+    // Create audit log
+    await this.createAdminAuditLog({
+      admin,
+      action: 'FLAGS_CLEARED',
+      taskId: publicId,
+      note: dto.note,
+      metadata: {
+        resolution: dto.resolution,
+        flagsCleared: openFlags.length,
+      },
+    });
+
+    // Create activity log
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.ADMIN_ACTION,
+      actorRole: ActorRole.ADMIN,
+      actorId: admin.id.toString(),
+      actorName: `${admin.firstName} ${admin.lastName}`,
+      action: `Flags cleared (${openFlags.length})`,
+      details: `Resolution: ${dto.resolution}. ${dto.note}`,
+    });
+
+    await this.em.flush();
+
+    return {
+      clearedCount: openFlags.length,
+      taskId: publicId,
+    };
+  }
+
+  // Admin release payment
+  async adminReleasePayment(publicId: string, dto: ReleasePaymentDto, admin: Admin) {
+    const task = await this.taskRepo.findOne(
+      { publicId },
+      { populate: ['postedBy', 'assignedTo'] },
+    );
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Find accepted bid and payment
+    const acceptedBid = await this.taskBidRepo.findOne({
+      task,
+      status: TaskBidStatus.ACCEPTED,
+    });
+
+    if (!acceptedBid) {
+      throw new NotFoundException('No accepted bid found for this task');
+    }
+
+    const payment = await this.paymentRepo.findOne({ taskBid: acceptedBid });
+
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    // Validate payment is in ESCROWED or COMPLETED status
+    if (![PaymentStatus.ESCROWED, PaymentStatus.COMPLETED].includes(payment.status)) {
+      throw new BadRequestException(
+        `Payment must be in ESCROWED or COMPLETED status. Current status: ${payment.status}`,
+      );
+    }
+
+    if (payment.status === PaymentStatus.RELEASED) {
+      throw new BadRequestException('Payment already released');
+    }
+
+    const beforeState = {
+      status: payment.status,
+      releasedAt: payment.releasedAt,
+    };
+
+    // Update payment
+    payment.status = PaymentStatus.RELEASED;
+    payment.releasedAt = new Date();
+    payment.releasedBy = `${admin.firstName} ${admin.lastName}`;
+    payment.adminNote = dto.note;
+
+    const afterState = {
+      status: payment.status,
+      releasedAt: payment.releasedAt,
+    };
+
+    // Create audit log
+    await this.createAdminAuditLog({
+      admin,
+      action: 'PAYMENT_RELEASED',
+      taskId: publicId,
+      note: dto.note,
+      beforeState,
+      afterState,
+      metadata: {
+        paymentId: payment.id,
+        amount: dto.amount || payment.bidAmount,
+      },
+    });
+
+    // Create activity log
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.PAYMENT,
+      actorRole: ActorRole.ADMIN,
+      actorId: admin.id.toString(),
+      actorName: `${admin.firstName} ${admin.lastName}`,
+      action: 'Payment released to runner',
+      details: dto.note,
+      metadata: {
+        amount: dto.amount || payment.bidAmount,
+      },
+    });
+
+    await this.em.flush();
+
+    // Optionally notify users
+    if (dto.notifyUsers) {
+      if (task.assignedTo) {
+        await this.notificationsService.createNotification(
+          task.assignedTo,
+          NotificationType.TASK_STATUS_CHANGED,
+          'Payment released',
+          `Payment for "${task.title}" has been released to you.`,
+          task,
+        );
+      }
+      if (task.postedBy) {
+        await this.notificationsService.createNotification(
+          task.postedBy,
+          NotificationType.TASK_STATUS_CHANGED,
+          'Payment released',
+          `Payment for "${task.title}" has been released to the runner.`,
+          task,
+        );
+      }
+    }
+
+    return {
+      success: true,
+      payment: {
+        id: payment.id,
+        publicId: payment.publicId,
+        status: payment.status,
+        releasedAt: payment.releasedAt,
+        amount: payment.bidAmount,
+      },
+    };
+  }
+
+  // Admin refund payment
+  async adminRefundPayment(publicId: string, dto: RefundPaymentDto, admin: Admin) {
+    const task = await this.taskRepo.findOne(
+      { publicId },
+      { populate: ['postedBy', 'assignedTo'] },
+    );
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Find accepted bid and payment
+    const acceptedBid = await this.taskBidRepo.findOne({
+      task,
+      status: TaskBidStatus.ACCEPTED,
+    });
+
+    if (!acceptedBid) {
+      throw new NotFoundException('No accepted bid found for this task');
+    }
+
+    const payment = await this.paymentRepo.findOne({ taskBid: acceptedBid });
+
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    // Validate payment status
+    if (payment.status === PaymentStatus.RELEASED) {
+      throw new BadRequestException('Cannot refund a released payment');
+    }
+
+    if (payment.status === PaymentStatus.REFUNDED) {
+      throw new BadRequestException('Payment already refunded');
+    }
+
+    const beforeState = {
+      status: payment.status,
+      refundedAt: payment.refundedAt,
+    };
+
+    // Update payment
+    payment.status = PaymentStatus.REFUNDED;
+    payment.refundedAt = new Date();
+    payment.refundedBy = `${admin.firstName} ${admin.lastName}`;
+    payment.adminNote = dto.note;
+
+    const afterState = {
+      status: payment.status,
+      refundedAt: payment.refundedAt,
+    };
+
+    // Create audit log
+    await this.createAdminAuditLog({
+      admin,
+      action: 'PAYMENT_REFUNDED',
+      taskId: publicId,
+      note: dto.note,
+      beforeState,
+      afterState,
+      metadata: {
+        paymentId: payment.id,
+        reason: dto.reason,
+        amount: dto.amount || payment.totalAmount,
+      },
+    });
+
+    // Create activity log
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.PAYMENT,
+      actorRole: ActorRole.ADMIN,
+      actorId: admin.id.toString(),
+      actorName: `${admin.firstName} ${admin.lastName}`,
+      action: 'Payment refunded to poster',
+      details: `Reason: ${dto.reason}. ${dto.note}`,
+      metadata: {
+        amount: dto.amount || payment.totalAmount,
+        reason: dto.reason,
+      },
+    });
+
+    await this.em.flush();
+
+    // Optionally notify users
+    if (dto.notifyUsers) {
+      if (task.postedBy) {
+        await this.notificationsService.createNotification(
+          task.postedBy,
+          NotificationType.TASK_STATUS_CHANGED,
+          'Payment refunded',
+          `Payment for "${task.title}" has been refunded to you. Reason: ${dto.reason}`,
+          task,
+        );
+      }
+      if (task.assignedTo) {
+        await this.notificationsService.createNotification(
+          task.assignedTo,
+          NotificationType.TASK_STATUS_CHANGED,
+          'Payment refunded',
+          `Payment for "${task.title}" has been refunded to poster. Reason: ${dto.reason}`,
+          task,
+        );
+      }
+    }
+
+    return {
+      success: true,
+      payment: {
+        id: payment.id,
+        publicId: payment.publicId,
+        status: payment.status,
+        refundedAt: payment.refundedAt,
+        amount: payment.totalAmount,
+      },
+    };
+  }
+
+  // Admin get bid negotiation history
+  async adminGetBidHistory(publicId: string, bidId: string) {
+    const task = await this.taskRepo.findOne({ publicId });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const parsedBidId = Number(bidId);
+    if (!Number.isInteger(parsedBidId) || parsedBidId <= 0) {
+      throw new BadRequestException('Invalid bid id');
+    }
+
+    const taskBid = await this.taskBidRepo.findOne(
+      { id: parsedBidId, task },
+      { populate: ['task', 'createdBy'] },
+    );
+
+    if (!taskBid) {
+      throw new NotFoundException('Task bid not found');
+    }
+
+    // Get negotiation history
+    const bidHistory = await this.taskBidNegotiationRepo.find(
+      { taskBid },
+      {
+        orderBy: { createdAt: 'DESC' },
+        populate: ['createdBy'],
+      },
+    );
+
+    return {
+      bid: {
+        id: taskBid.id,
+        amount: taskBid.amount,
+        message: taskBid.message,
+        status: taskBid.status,
+        createdAt: taskBid.createdAt,
+        runner: {
+          id: taskBid.createdBy.id,
+          uuid: taskBid.createdBy.uuid,
+          firstName: taskBid.createdBy.firstName,
+          lastName: taskBid.createdBy.lastName,
+        },
+      },
+      negotiations: bidHistory.map((negotiation) => ({
+        id: negotiation.id,
+        amount: negotiation.amount,
+        message: negotiation.message,
+        role: negotiation.role,
+        createdAt: negotiation.createdAt,
+        createdBy: {
+          id: negotiation.createdBy.id,
+          uuid: negotiation.createdBy.uuid,
+          firstName: negotiation.createdBy.firstName,
+          lastName: negotiation.createdBy.lastName,
+        },
+      })),
+      totalNegotiations: bidHistory.length,
+    };
+  }
+
+  // Admin add moderation note
+  async adminAddModerationNote(publicId: string, dto: AddModerationNoteDto, admin: Admin) {
+    const task = await this.taskRepo.findOne({ publicId });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // Create moderation note
+    const note = this.moderationNoteRepo.create({
+      task,
+      author: admin,
+      content: dto.content,
+    });
+
+    // Create activity log (optional, for transparency)
+    await this.createTaskActivity({
+      task,
+      type: ActivityType.ADMIN_ACTION,
+      actorRole: ActorRole.ADMIN,
+      actorId: admin.id.toString(),
+      actorName: `${admin.firstName} ${admin.lastName}`,
+      action: 'Moderation note added',
+      details: 'Internal admin note added to task',
+    });
+
+    await this.em.persistAndFlush(note);
+
+    return {
+      id: note.id,
+      content: note.content,
+      author: {
+        id: admin.id,
+        name: `${admin.firstName} ${admin.lastName}`,
+      },
+      createdAt: note.createdAt,
     };
   }
 }

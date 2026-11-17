@@ -37,6 +37,11 @@ export class AdminsController {
     @Body() createAdminDto: CreateAdminDto,
     @Res({ passthrough: true }) res: Response,
   ) {
+    // Prevent creation of admins with reserved name
+    if (createAdminDto.firstName === 'App' && createAdminDto.lastName === 'Administrator') {
+      throw new ConflictException('Cannot create admin with name "App Administrator". Please use a different name.');
+    }
+
     const existingEmail = await this.adminsService.findOneByEmailWithPassword(createAdminDto.email);
     const existingPhone = await this.adminsService.findOneByPhoneNumber(createAdminDto.phoneNumber);
 

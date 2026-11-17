@@ -21,6 +21,8 @@ export enum TaskStatusEnum {
   PENDING_APPROVAL = 'PENDING_APPROVAL',
   DISPUTED = 'DISPUTED',
   COMPLETED = 'COMPLETED',
+  SUSPENDED = 'SUSPENDED',
+  CANCELLED = 'CANCELLED',
 }
 
 export class CreateTaskDto {

@@ -11,13 +11,29 @@ import { TaskBid } from './entities/task-bid.entity';
 import { TaskBidNegotiation } from './entities/task-bid-negotiation.entity';
 import { Payment } from './entities/payment.entity';
 import { SystemSettings } from './entities/system-settings.entity';
+import { TaskFlag } from './entities/task-flag.entity';
+import { ModerationNote } from './entities/moderation-note.entity';
+import { TaskActivity } from './entities/task-activity.entity';
+import { AdminAuditLog } from './entities/admin-audit-log.entity';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { PaystackService } from './paystack.service';
 
 @Module({
   imports: [
-    MikroOrmModule.forFeature([TaskCategory, Task, TaskBid, TaskBidNegotiation, Payment, SystemSettings, User]),
+    MikroOrmModule.forFeature([
+      TaskCategory,
+      Task,
+      TaskBid,
+      TaskBidNegotiation,
+      Payment,
+      SystemSettings,
+      User,
+      TaskFlag,
+      ModerationNote,
+      TaskActivity,
+      AdminAuditLog,
+    ]),
     NotificationsModule,
     CloudinaryModule,
   ],
