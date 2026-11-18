@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Res,
+  Query,
   ConflictException,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -104,5 +105,29 @@ export class AdminsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.adminsService.remove(+id);
+  }
+
+  @ResponseMessage('Audit logs retrieved successfully!')
+  @Get('audit-logs/all')
+  getAuditLogs(
+    @Query('adminId') adminId?: number,
+    @Query('action') action?: string,
+    @Query('taskId') taskId?: string,
+    @Query('userId') userId?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    return this.adminsService.getAuditLogs({
+      adminId,
+      action,
+      taskId,
+      userId,
+      fromDate,
+      toDate,
+      page,
+      pageSize,
+    });
   }
 }
