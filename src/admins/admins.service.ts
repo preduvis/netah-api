@@ -3,6 +3,8 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository, EntityManager } from '@mikro-orm/postgresql';
 import { Admin } from './entities/admin.entity';
 import { AdminAuditLog } from 'src/tasks/entities/admin-audit-log.entity';
+import { Task } from 'src/tasks/entities/task.entity';
+import { User } from 'src/users/entities/user.entity';
 import { CreateAdminDto } from './dto/create-admin.dto';
 
 @Injectable()
@@ -12,6 +14,10 @@ export class AdminsService {
     private readonly adminRepository: EntityRepository<Admin>,
     @InjectRepository(AdminAuditLog)
     private readonly auditLogRepo: EntityRepository<AdminAuditLog>,
+    @InjectRepository(Task)
+    private readonly taskRepo: EntityRepository<Task>,
+    @InjectRepository(User)
+    private readonly userRepo: EntityRepository<User>,
     private readonly em: EntityManager,
   ) {}
 
@@ -125,24 +131,46 @@ export class AdminsService {
       offset,
     });
 
+    // Collect unique taskIds and userIds
+    const taskIds = [...new Set(logs.map(log => log.taskId).filter(Boolean))] as string[];
+    const userIds = [...new Set(logs.map(log => log.userId).filter(Boolean))] as string[];
+
+    // Fetch all related tasks and users in bulk
+    const tasks = taskIds.length > 0
+      ? await this.taskRepo.find({ publicId: { $in: taskIds } })
+      : [];
+
+    const users = userIds.length > 0
+      ? await this.userRepo.find({ uuid: { $in: userIds } })
+      : [];
+
+    // Create lookup maps for quick access
+    const taskMap = new Map(tasks.map(task => [task.publicId, task]));
+    const userMap = new Map(users.map(user => [user.uuid, user]));
+
     return {
-      logs: logs.map((log) => ({
-        id: log.id,
-        admin: {
-          id: log.admin.id,
-          name: `${log.admin.firstName} ${log.admin.lastName}`,
-          email: log.admin.email,
-        },
-        action: log.action,
-        taskId: log.taskId,
-        userId: log.userId,
-        note: log.note,
-        ipAddress: log.ipAddress,
-        beforeState: log.beforeState,
-        afterState: log.afterState,
-        metadata: log.metadata,
-        timestamp: log.timestamp,
-      })),
+      logs: logs.map((log) => {
+        const task = log.taskId ? taskMap.get(log.taskId) : null;
+        const user = log.userId ? userMap.get(log.userId) : null;
+
+        return {
+          id: log.id,
+          admin: {
+            id: log.admin.id,
+            name: `${log.admin.firstName} ${log.admin.lastName}`,
+            email: log.admin.email,
+          },
+          action: log.action,
+          task: task ? { id: task.publicId, title: task.title } : null,
+          user: user ? { id: user.uuid, name: `${user.firstName} ${user.lastName}` } : null,
+          note: log.note,
+          ipAddress: log.ipAddress,
+          beforeState: log.beforeState,
+          afterState: log.afterState,
+          metadata: log.metadata,
+          timestamp: log.timestamp,
+        };
+      }),
       pagination: {
         total,
         page,

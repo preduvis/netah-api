@@ -1,13 +1,16 @@
 import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository, EntityManager } from '@mikro-orm/postgresql';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UsersService } from 'src/users/users.service';
 import { AdminsService } from 'src/admins/admins.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { User } from 'src/users/entities/user.entity';
 import { Admin } from 'src/admins/entities/admin.entity';
+import { AdminAuditLog } from 'src/tasks/entities/admin-audit-log.entity';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -25,6 +28,9 @@ export class AuthService {
     private adminsService: AdminsService,
     private jwtService: JwtService,
     private emailService: EmailService,
+    @InjectRepository(AdminAuditLog)
+    private readonly auditLogRepo: EntityRepository<AdminAuditLog>,
+    private readonly em: EntityManager,
   ) {}
 
   async login(createAuthDto: CreateAuthDto, res: Response, req?: any) {
@@ -336,7 +342,7 @@ export class AuthService {
     return { message: '2FA disabled successfully' };
   }
 
-  async adminLogin2FA(adminLoginDto: AdminLoginDto, res: Response) {
+  async adminLogin2FA(adminLoginDto: AdminLoginDto, res: Response, req?: Request) {
     const admin = await this.adminsService.findOneByEmailWithPassword(adminLoginDto.email);
 
     if (!admin) {
@@ -381,6 +387,19 @@ export class AuthService {
       maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
     });
 
+    // Log admin login activity
+    const auditLog = this.auditLogRepo.create({
+      admin,
+      action: 'ADMIN_LOGIN',
+      note: 'Admin logged in successfully (no 2FA)',
+      ipAddress: req?.ip || req?.socket?.remoteAddress,
+      metadata: {
+        userAgent: req?.get('user-agent'),
+        twoFactorUsed: false,
+      },
+    });
+    await this.em.persist(auditLog).flush();
+
     return {
       access_token: token,
       mustChangePassword: admin.mustChangePassword || false,
@@ -388,7 +407,7 @@ export class AuthService {
     };
   }
 
-  async verify2FALogin(pendingToken: string, code: string, res: Response) {
+  async verify2FALogin(pendingToken: string, code: string, res: Response, req?: Request) {
     // Verify pending token
     let payload: any;
     try {
@@ -434,6 +453,19 @@ export class AuthService {
       sameSite: isProd ? 'none' : 'lax',
       maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
     });
+
+    // Log admin login activity with 2FA
+    const auditLog = this.auditLogRepo.create({
+      admin,
+      action: 'ADMIN_LOGIN',
+      note: 'Admin logged in successfully with 2FA',
+      ipAddress: req?.ip || req?.socket?.remoteAddress,
+      metadata: {
+        userAgent: req?.get('user-agent'),
+        twoFactorUsed: true,
+      },
+    });
+    await this.em.persist(auditLog).flush();
 
     return {
       access_token: token,

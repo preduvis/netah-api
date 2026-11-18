@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { AdminController } from './admin.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from 'src/users/users.module';
 import { AdminsModule } from 'src/admins/admins.module';
+import { AdminAuditLog } from 'src/tasks/entities/admin-audit-log.entity';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './jwt.strategy';
@@ -15,6 +17,7 @@ import { EmailModule } from 'src/email/email.module';
   imports: [
     UsersModule,
     AdminsModule,
+    MikroOrmModule.forFeature([AdminAuditLog]),
     PassportModule,
     EmailModule,
     JwtModule.registerAsync({

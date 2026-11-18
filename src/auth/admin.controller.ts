@@ -1,11 +1,11 @@
-import { Controller, Post, Body, Res, UseGuards, Put, Get } from '@nestjs/common';
+import { Controller, Post, Body, Res, Req, UseGuards, Put, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Verify2FADto } from './dto/verify-2fa.dto';
 import { Verify2FALoginDto } from './dto/verify-2fa-login.dto';
 import { ResponseMessage } from 'src/response/response.decorator';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { AdminJwtAuthGuard } from './guards/admin-jwt-auth.guard';
 import { Must2FAGuard } from './guards/must-2fa.guard';
 import { CurrentUser } from './decorators/current-user-decorator';
@@ -25,8 +25,9 @@ export class AdminController {
   adminLogin(
     @Body() adminLoginDto: AdminLoginDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
   ) {
-    return this.authService.adminLogin2FA(adminLoginDto, res);
+    return this.authService.adminLogin2FA(adminLoginDto, res, req);
   }
 
   @ResponseMessage('2FA verification successful!')
@@ -34,8 +35,9 @@ export class AdminController {
   verify2FALogin(
     @Body() verify2FALoginDto: Verify2FALoginDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
   ) {
-    return this.authService.verify2FALogin(verify2FALoginDto.pendingToken, verify2FALoginDto.code, res);
+    return this.authService.verify2FALogin(verify2FALoginDto.pendingToken, verify2FALoginDto.code, res, req);
   }
 
   @ResponseMessage('Current admin retrieved successfully!')
