@@ -1810,6 +1810,29 @@ export class TasksService {
       filter.createdAt.$lte = new Date(options.toDate);
     }
 
+    // Filter by flags at database level
+    if (options?.hasFlagsOnly) {
+      const openFlags = await this.taskFlagRepo.find(
+        { status: FlagStatus.OPEN },
+        { populate: ['task'] }
+      );
+
+      const taskIds = [...new Set(openFlags.map((flag) => flag.task.id))];
+
+      if (taskIds.length === 0) {
+        // No flagged tasks, return empty
+        return {
+          tasks: [],
+          total: 0,
+          page,
+          pageSize,
+          totalPages: 0,
+        };
+      }
+
+      filter.id = { $in: taskIds };
+    }
+
     // Build orderBy
     let orderBy: any = { createdAt: 'DESC' };
     if (options?.sort === 'created_asc') orderBy = { createdAt: 'ASC' };
@@ -1868,18 +1891,12 @@ export class TasksService {
       }),
     );
 
-    // Apply hasFlagsOnly filter if specified (post-fetch since it requires count)
-    let filteredTasks = enrichedTasks;
-    if (options?.hasFlagsOnly) {
-      filteredTasks = enrichedTasks.filter((t) => t.hasFlags);
-    }
-
     return {
-      tasks: filteredTasks,
-      total: options?.hasFlagsOnly ? filteredTasks.length : total,
+      tasks: enrichedTasks,
+      total,
       page,
       pageSize,
-      totalPages: Math.ceil((options?.hasFlagsOnly ? filteredTasks.length : total) / pageSize),
+      totalPages: Math.ceil(total / pageSize),
     };
   }
 
