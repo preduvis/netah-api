@@ -16,8 +16,20 @@ export class TaskCategory {
   @Property()
   description: string;
 
+  @Property({ nullable: true })
+  image?: string; // Cloudinary URL
+
+  @Property({ nullable: true })
+  imagePublicId?: string; // Cloudinary public ID for deletion
+
+  @Property({ default: true })
+  isActive?: boolean = true;
+
   @Property({ onCreate: () => new Date() })
   createdAt?: Date;
+
+  @Property({ onUpdate: () => new Date(), nullable: true })
+  updatedAt?: Date;
 
   @Property({ nullable: true })
   deletedAt?: Date;
