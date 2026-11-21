@@ -32,8 +32,14 @@ export class TaskBid {
   @ManyToOne(() => Task)
   task!: Task;
 
+  @ManyToOne(() => User, { nullable: true })
+  lastUpdatedBy?: User;
+
   @Property({ onCreate: () => new Date() })
   createdAt?: Date;
+
+  @Property({ onUpdate: () => new Date(), nullable: true })
+  updatedAt?: Date;
 
   @Property({ nullable: true })
   deletedAt?: Date;

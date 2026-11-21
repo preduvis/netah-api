@@ -1215,7 +1215,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": false,
+          "nullable": true,
           "unique": false,
           "length": 6,
           "precision": null,
@@ -1240,6 +1240,38 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "created_by_id": {
+          "name": "created_by_id",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
+        "last_updated_by_id": {
+          "name": "last_updated_by_id",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
         }
       },
       "name": "system_settings",
@@ -1267,7 +1299,34 @@
         }
       ],
       "checks": [],
-      "foreignKeys": {},
+      "foreignKeys": {
+        "system_settings_created_by_id_foreign": {
+          "columnNames": [
+            "created_by_id"
+          ],
+          "constraintName": "system_settings_created_by_id_foreign",
+          "localTableName": "public.system_settings",
+          "referencedTableName": "public.admin",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "set null"
+        },
+        "system_settings_last_updated_by_id_foreign": {
+          "columnNames": [
+            "last_updated_by_id"
+          ],
+          "constraintName": "system_settings_last_updated_by_id_foreign",
+          "localTableName": "public.system_settings",
+          "referencedTableName": "public.admin",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "set null"
+        }
+      },
       "nativeEnums": {},
       "comment": null
     },
@@ -1649,6 +1708,38 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "text"
+        },
+        "last_updated_by_id": {
+          "name": "last_updated_by_id",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
         }
       },
       "name": "task",
@@ -1712,6 +1803,19 @@
           ],
           "updateRule": "cascade",
           "deleteRule": "no action"
+        },
+        "task_last_updated_by_id_foreign": {
+          "columnNames": [
+            "last_updated_by_id"
+          ],
+          "constraintName": "task_last_updated_by_id_foreign",
+          "localTableName": "public.task",
+          "referencedTableName": "public.user",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "set null"
         },
         "task_posted_by_id_foreign": {
           "columnNames": [
@@ -2102,6 +2206,38 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "integer"
+        },
+        "last_updated_by_id": {
+          "name": "last_updated_by_id",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
         }
       },
       "name": "task_bid",
@@ -2144,6 +2280,19 @@
           ],
           "updateRule": "cascade",
           "deleteRule": "no action"
+        },
+        "task_bid_last_updated_by_id_foreign": {
+          "columnNames": [
+            "last_updated_by_id"
+          ],
+          "constraintName": "task_bid_last_updated_by_id_foreign",
+          "localTableName": "public.task_bid",
+          "referencedTableName": "public.user",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "set null"
         },
         "task_bid_task_id_foreign": {
           "columnNames": [
