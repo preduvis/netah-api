@@ -7,15 +7,12 @@ import {
   Param,
   Delete,
   UseGuards,
-  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ResponseMessage } from 'src/response/response.decorator';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { CurrentUser } from 'src/auth/decorators/current-user-decorator';
-import { User } from './entities/user.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -51,20 +48,5 @@ export class UsersController {
   @ResponseMessage('User deleted successfully!')
   remove(@Param('id') id: string) {
     return this.usersService.remove(+id);
-  }
-
-  @ResponseMessage('Activity log retrieved successfully!')
-  @Get('me/activity')
-  getMyActivity(
-    @CurrentUser() user: User,
-    @Query('type') type?: string,
-    @Query('limit') limit?: number,
-    @Query('offset') offset?: number,
-  ) {
-    return this.usersService.getUserActivity(user, {
-      type: type as any,
-      limit,
-      offset,
-    });
   }
 }
