@@ -19,7 +19,13 @@ export class AdminJwtStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
 
   async validate(payload: any) {
     try {
-      const admin = await this.adminsService.findOne(payload.sub);
+      // Validate that payload.sub is a valid number
+      const adminId = Number(payload.sub);
+      if (!Number.isInteger(adminId) || adminId <= 0) {
+        throw new UnauthorizedException('Invalid admin token');
+      }
+
+      const admin = await this.adminsService.findOne(adminId);
 
       if (!admin) {
         throw new UnauthorizedException('Admin access required');

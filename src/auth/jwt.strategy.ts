@@ -18,14 +18,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
+    // Validate that payload.sub is a valid number
+    const userId = Number(payload.sub);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return null;
+    }
+
     // Fetch full user to get latest mustChangePassword status
     try {
-      const user = await this.usersService.findOne(payload.sub);
+      const user = await this.usersService.findOne(userId);
       return user;
     } catch (error) {
       // Return minimal user object if fetch fails
       return {
-        id: payload.sub,
+        id: userId,
         email: payload.email,
       };
     }
