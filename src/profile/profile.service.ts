@@ -12,6 +12,7 @@ import { UpdateNotificationPreferencesDto } from './dto/update-notification-pref
 import { UpdateProfileVisibilityDto } from './dto/update-profile-visibility.dto';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { UsersService } from 'src/users/users.service';
+import { UserActivityType } from 'src/users/entities/user-activity.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -330,7 +331,7 @@ export class ProfileService {
     const userAgent = req?.get?.('user-agent');
     await this.usersService.logUserActivity({
       user,
-      type: 'PROFILE_UPDATED' as any,
+      type: UserActivityType.PROFILE_UPDATED,
       action: 'Profile updated',
       details: `Updated fields: ${updatedFields.join(', ')}`,
       metadata: { updatedFields },
@@ -367,7 +368,7 @@ export class ProfileService {
     const userAgent = req?.get?.('user-agent');
     await this.usersService.logUserActivity({
       user,
-      type: 'PASSWORD_CHANGED' as any,
+      type: UserActivityType.PASSWORD_CHANGED,
       action: 'Password changed',
       ipAddress,
       userAgent,
@@ -604,7 +605,7 @@ export class ProfileService {
     const userAgent = req?.get?.('user-agent');
     await this.usersService.logUserActivity({
       user,
-      type: 'PROFILE_IMAGE_CHANGED' as any,
+      type: UserActivityType.PROFILE_IMAGE_CHANGED,
       action: 'Profile image uploaded',
       ipAddress,
       userAgent,
@@ -640,7 +641,7 @@ export class ProfileService {
     const userAgent = req?.get?.('user-agent');
     await this.usersService.logUserActivity({
       user,
-      type: 'PROFILE_IMAGE_CHANGED' as any,
+      type: UserActivityType.PROFILE_IMAGE_CHANGED,
       action: 'Profile image deleted',
       ipAddress,
       userAgent,

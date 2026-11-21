@@ -28,6 +28,8 @@ import { NotificationType } from './entities/notification.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { PaystackService } from './paystack.service';
+import { UsersService } from 'src/users/users.service';
+import { UserActivityType } from 'src/users/entities/user-activity.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { TaskFlag, FlagStatus, FlagSeverity, FlagReporterRole } from './entities/task-flag.entity';
 import { ModerationNote } from './entities/moderation-note.entity';
@@ -84,6 +86,7 @@ export class TasksService {
     private readonly notificationsService: NotificationsService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly paystackService: PaystackService,
+    private readonly usersService: UsersService,
 
     private readonly em: EntityManager,
   ) {}
@@ -255,6 +258,20 @@ export class TasksService {
         reward: task.reward,
         category: category.name,
         deadline: task.deadline,
+      },
+    });
+
+    // Log to user activity
+    await this.usersService.logUserActivity({
+      user,
+      type: UserActivityType.TASK_CREATED,
+      action: 'Created task',
+      details: `Created task "${task.title}" with reward ₦${task.reward.toFixed(2)}`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        reward: task.reward,
+        category: category.name,
       },
     });
 
@@ -505,6 +522,20 @@ export class TasksService {
       details: createTaskBidDto.message || undefined,
       metadata: {
         amount: createTaskBidDto.amount,
+        bidId: taskBid.id,
+      },
+    });
+
+    // Log to user activity
+    await this.usersService.logUserActivity({
+      user: bidder,
+      type: UserActivityType.BID_PLACED,
+      action: 'Placed bid',
+      details: `Placed bid of ₦${taskBid.amount.toFixed(2)} on task "${task.title}"`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        bidAmount: taskBid.amount,
         bidId: taskBid.id,
       },
     });
@@ -1031,6 +1062,24 @@ export class TasksService {
       },
     });
 
+    // Log to user activity
+    await this.usersService.logUserActivity({
+      user: currentUser,
+      type: UserActivityType.PAYMENT_MADE,
+      action: 'Initialized payment',
+      details: `Initialized payment of ₦${totalAmount.toFixed(2)} to accept bid for task "${task.title}"`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        bidAmount,
+        serviceCharge,
+        totalAmount,
+        runnerId: taskBid.createdBy.uuid,
+        runnerName: `${taskBid.createdBy.firstName} ${taskBid.createdBy.lastName}`,
+        paymentReference,
+      },
+    });
+
     return {
       message: 'Payment initialized successfully',
       payment: {
@@ -1118,6 +1167,36 @@ export class TasksService {
         runnerId: taskBid.createdBy.id,
         runnerName: `${taskBid.createdBy.firstName} ${taskBid.createdBy.lastName}`,
         amount: payment.bidAmount,
+      },
+    });
+
+    // Log to poster's user activity (bid accepted)
+    await this.usersService.logUserActivity({
+      user: payment.paidBy,
+      type: UserActivityType.BID_ACCEPTED,
+      action: 'Accepted bid',
+      details: `Accepted bid of ₦${payment.bidAmount.toFixed(2)} for task "${task.title}"`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        bidAmount: payment.bidAmount,
+        runnerId: taskBid.createdBy.uuid,
+        runnerName: `${taskBid.createdBy.firstName} ${taskBid.createdBy.lastName}`,
+      },
+    });
+
+    // Log to runner's user activity (bid accepted)
+    await this.usersService.logUserActivity({
+      user: taskBid.createdBy,
+      type: UserActivityType.BID_ACCEPTED,
+      action: 'Bid accepted',
+      details: `Your bid of ₦${payment.bidAmount.toFixed(2)} was accepted for task "${task.title}"`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        bidAmount: payment.bidAmount,
+        posterId: payment.paidBy.uuid,
+        posterName: `${payment.paidBy.firstName} ${payment.paidBy.lastName}`,
       },
     });
 
@@ -1320,6 +1399,20 @@ export class TasksService {
       },
     });
 
+    // Log to user activity
+    await this.usersService.logUserActivity({
+      user: currentUser,
+      type: UserActivityType.BID_WITHDRAWN,
+      action: 'Withdrew bid',
+      details: `Withdrew bid of ₦${taskBid.amount.toFixed(2)} from task "${task.title}"`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        bidAmount: taskBid.amount,
+        bidId: taskBid.id,
+      },
+    });
+
     await this.em.flush();
 
     // Notify poster of withdrawal
@@ -1435,6 +1528,19 @@ export class TasksService {
       },
     });
 
+    // Log to user activity
+    await this.usersService.logUserActivity({
+      user: task.assignedTo,
+      type: UserActivityType.TASK_COMPLETED,
+      action: 'Submitted completed task',
+      details: `Marked task "${task.title}" as completed and submitted for approval`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        status: 'PENDING_APPROVAL',
+      },
+    });
+
     await this.em.flush();
 
     // Notify poster that task is ready for approval
@@ -1504,6 +1610,36 @@ export class TasksService {
       },
     });
 
+    // Log to poster's user activity
+    await this.usersService.logUserActivity({
+      user: currentUser,
+      type: UserActivityType.TASK_APPROVED,
+      action: 'Approved completed task',
+      details: `Approved task "${task.title}" and rated ${approveTaskDto.rating} stars`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        rating: approveTaskDto.rating,
+        runnerId: task.assignedTo.uuid,
+        runnerName: `${task.assignedTo.firstName} ${task.assignedTo.lastName}`,
+      },
+    });
+
+    // Log to runner's user activity
+    await this.usersService.logUserActivity({
+      user: task.assignedTo,
+      type: UserActivityType.TASK_APPROVED,
+      action: 'Task approved',
+      details: `Your work on task "${task.title}" was approved with ${approveTaskDto.rating} stars`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        rating: approveTaskDto.rating,
+        posterId: currentUser.uuid,
+        posterName: `${currentUser.firstName} ${currentUser.lastName}`,
+      },
+    });
+
     // Log payment release
     const acceptedBid = await this.taskBidRepo.findOne({
       task,
@@ -1525,6 +1661,20 @@ export class TasksService {
           metadata: {
             paymentId: payment.id,
             amount: payment.bidAmount,
+          },
+        });
+
+        // Log payment received to runner's activity
+        await this.usersService.logUserActivity({
+          user: task.assignedTo,
+          type: UserActivityType.PAYMENT_RECEIVED,
+          action: 'Payment received',
+          details: `Received payment of ₦${payment.bidAmount.toFixed(2)} for task "${task.title}"`,
+          metadata: {
+            taskId: task.publicId,
+            taskTitle: task.title,
+            amount: payment.bidAmount,
+            paymentId: payment.id,
           },
         });
       }
@@ -1609,6 +1759,21 @@ export class TasksService {
         previousStatus,
         newStatus: 'DISPUTED',
         disputedBy: isPoster ? 'POSTER' : 'RUNNER',
+      },
+    });
+
+    // Log to user activity
+    await this.usersService.logUserActivity({
+      user: currentUser,
+      type: UserActivityType.TASK_DISPUTED,
+      action: 'Disputed task',
+      details: `Disputed task "${task.title}" - Reason: ${disputeTaskDto.reason}`,
+      metadata: {
+        taskId: task.publicId,
+        taskTitle: task.title,
+        reason: disputeTaskDto.reason,
+        role: isPoster ? 'POSTER' : 'RUNNER',
+        previousStatus,
       },
     });
 

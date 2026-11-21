@@ -17,6 +17,7 @@ import { TaskActivity } from './entities/task-activity.entity';
 import { AdminAuditLog } from './entities/admin-audit-log.entity';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
+import { UsersModule } from 'src/users/users.module';
 import { PaystackService } from './paystack.service';
 
 @Module({
@@ -36,6 +37,7 @@ import { PaystackService } from './paystack.service';
     ]),
     NotificationsModule,
     CloudinaryModule,
+    UsersModule,
   ],
   controllers: [TasksController, AdminTasksController, AdminPaymentsController],
   providers: [TasksService, PaystackService],

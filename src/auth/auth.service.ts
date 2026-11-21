@@ -18,6 +18,7 @@ import { EmailService } from 'src/email/email.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Verify2FADto } from './dto/verify-2fa.dto';
+import { UserActivityType } from 'src/users/entities/user-activity.entity';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 
@@ -60,7 +61,7 @@ export class AuthService {
     const userAgent = req?.get('user-agent');
     await this.usersService.logUserActivity({
       user,
-      type: 'LOGIN' as any,
+      type: UserActivityType.LOGIN,
       action: 'User logged in',
       ipAddress,
       userAgent,
@@ -101,7 +102,7 @@ export class AuthService {
     const userAgent = req?.get('user-agent');
     await this.usersService.logUserActivity({
       user,
-      type: 'LOGIN' as any, // First login after registration
+      type: UserActivityType.LOGIN, // First login after registration
       action: 'User registered and logged in',
       ipAddress,
       userAgent,
@@ -189,7 +190,7 @@ export class AuthService {
     const userAgent = req?.get('user-agent');
     await this.usersService.logUserActivity({
       user,
-      type: 'PASSWORD_CHANGED' as any,
+      type: UserActivityType.PASSWORD_CHANGED,
       action: 'Password reset via OTP',
       ipAddress,
       userAgent,
