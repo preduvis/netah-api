@@ -21,6 +21,8 @@ import { ResponseMessage } from 'src/response/response.decorator';
 import { AdminJwtAuthGuard } from 'src/auth/guards/admin-jwt-auth.guard';
 import { MustChangePasswordGuard } from 'src/auth/guards/must-change-password.guard';
 import { Must2FAGuard } from 'src/auth/guards/must-2fa.guard';
+import { CurrentUser } from 'src/auth/decorators/current-user-decorator';
+import { Admin } from 'src/admins/entities/admin.entity';
 
 @UseGuards(AdminJwtAuthGuard, MustChangePasswordGuard, Must2FAGuard)
 @Controller('admin/categories')
@@ -29,8 +31,8 @@ export class CategoriesController {
 
   @ResponseMessage('Category created successfully!')
   @Post()
-  create(@Body() createCategoryDto: CreateTaskCategoryDto) {
-    return this.categoriesService.create(createCategoryDto);
+  create(@Body() createCategoryDto: CreateTaskCategoryDto, @CurrentUser() admin: Admin) {
+    return this.categoriesService.create(createCategoryDto, admin);
   }
 
   @ResponseMessage('All categories retrieved successfully!')
@@ -47,8 +49,8 @@ export class CategoriesController {
 
   @ResponseMessage('Category updated successfully!')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCategoryDto: UpdateTaskCategoryDto) {
-    return this.categoriesService.update(+id, updateCategoryDto);
+  update(@Param('id') id: string, @Body() updateCategoryDto: UpdateTaskCategoryDto, @CurrentUser() admin: Admin) {
+    return this.categoriesService.update(+id, updateCategoryDto, admin);
   }
 
   @ResponseMessage('Category deleted successfully!')
@@ -70,18 +72,19 @@ export class CategoriesController {
       }),
     )
     file: Express.Multer.File,
+    @CurrentUser() admin: Admin,
   ) {
     // Manual validation for file types including SVG
     const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
     if (!allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException(`Invalid file type. Allowed types: ${allowedMimeTypes.join(', ')}`);
     }
-    return this.categoriesService.uploadImage(+id, file);
+    return this.categoriesService.uploadImage(+id, file, admin);
   }
 
   @ResponseMessage('Category image deleted successfully!')
   @Delete(':id/image')
-  deleteImage(@Param('id') id: string) {
-    return this.categoriesService.deleteImage(+id);
+  deleteImage(@Param('id') id: string, @CurrentUser() admin: Admin) {
+    return this.categoriesService.deleteImage(+id, admin);
   }
 }

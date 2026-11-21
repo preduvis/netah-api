@@ -1,4 +1,5 @@
-import { Entity, Filter, PrimaryKey, Property } from '@mikro-orm/core';
+import { Entity, Filter, ManyToOne, PrimaryKey, Property } from '@mikro-orm/core';
+import { Admin } from 'src/admins/entities/admin.entity';
 
 @Entity()
 @Filter({
@@ -24,6 +25,12 @@ export class TaskCategory {
 
   @Property({ default: true })
   isActive?: boolean = true;
+
+  @ManyToOne(() => Admin, { nullable: true })
+  createdBy?: Admin;
+
+  @ManyToOne(() => Admin, { nullable: true })
+  lastUpdatedBy?: Admin;
 
   @Property({ onCreate: () => new Date() })
   createdAt?: Date;

@@ -2471,6 +2471,38 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "created_by_id": {
+          "name": "created_by_id",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
+        "last_updated_by_id": {
+          "name": "last_updated_by_id",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
         }
       },
       "name": "task_category",
@@ -2498,7 +2530,34 @@
         }
       ],
       "checks": [],
-      "foreignKeys": {},
+      "foreignKeys": {
+        "task_category_created_by_id_foreign": {
+          "columnNames": [
+            "created_by_id"
+          ],
+          "constraintName": "task_category_created_by_id_foreign",
+          "localTableName": "public.task_category",
+          "referencedTableName": "public.admin",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "set null"
+        },
+        "task_category_last_updated_by_id_foreign": {
+          "columnNames": [
+            "last_updated_by_id"
+          ],
+          "constraintName": "task_category_last_updated_by_id_foreign",
+          "localTableName": "public.task_category",
+          "referencedTableName": "public.admin",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "set null"
+        }
+      },
       "nativeEnums": {},
       "comment": null
     },

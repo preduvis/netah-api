@@ -11,6 +11,7 @@ import { Task } from './entities/task.entity';
 import { CreateTaskCategoryDto } from './dto/create-task-category.dto';
 import { UpdateTaskCategoryDto } from './dto/update-task-category.dto';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+import { Admin } from 'src/admins/entities/admin.entity';
 
 @Injectable()
 export class CategoriesService {
@@ -23,7 +24,7 @@ export class CategoriesService {
     private readonly em: EntityManager,
   ) {}
 
-  async create(createCategoryDto: CreateTaskCategoryDto): Promise<TaskCategory> {
+  async create(createCategoryDto: CreateTaskCategoryDto, admin: Admin): Promise<TaskCategory> {
     // Check for duplicate name
     const existing = await this.categoryRepo.findOne({
       name: { $ilike: createCategoryDto.name },
@@ -33,24 +34,34 @@ export class CategoriesService {
       throw new ConflictException('Category with this name already exists');
     }
 
-    const category = this.categoryRepo.create(createCategoryDto);
+    const category = this.categoryRepo.create({
+      ...createCategoryDto,
+      createdBy: admin,
+      lastUpdatedBy: admin,
+    });
     await this.em.persistAndFlush(category);
     return category;
   }
 
   async findAll(): Promise<TaskCategory[]> {
-    return this.categoryRepo.findAll({ orderBy: { name: 'ASC' } });
+    return this.categoryRepo.findAll({
+      populate: ['createdBy', 'lastUpdatedBy'],
+      orderBy: { name: 'ASC' }
+    });
   }
 
   async findOne(id: number): Promise<TaskCategory> {
-    const category = await this.categoryRepo.findOne({ id });
+    const category = await this.categoryRepo.findOne(
+      { id },
+      { populate: ['createdBy', 'lastUpdatedBy'] }
+    );
     if (!category) {
       throw new NotFoundException(`Category with ID ${id} not found`);
     }
     return category;
   }
 
-  async update(id: number, updateCategoryDto: UpdateTaskCategoryDto): Promise<TaskCategory> {
+  async update(id: number, updateCategoryDto: UpdateTaskCategoryDto, admin: Admin): Promise<TaskCategory> {
     const category = await this.findOne(id);
 
     // Check for duplicate name if name is being updated
@@ -65,6 +76,7 @@ export class CategoriesService {
     }
 
     Object.assign(category, updateCategoryDto);
+    category.lastUpdatedBy = admin;
     await this.em.flush();
     return category;
   }
@@ -92,7 +104,7 @@ export class CategoriesService {
     await this.em.flush();
   }
 
-  async uploadImage(id: number, file: Express.Multer.File): Promise<TaskCategory> {
+  async uploadImage(id: number, file: Express.Multer.File, admin: Admin): Promise<TaskCategory> {
     const category = await this.findOne(id);
 
     // Delete old image if exists
@@ -108,12 +120,13 @@ export class CategoriesService {
 
     category.image = url;
     category.imagePublicId = publicId;
+    category.lastUpdatedBy = admin;
     await this.em.flush();
 
     return category;
   }
 
-  async deleteImage(id: number): Promise<TaskCategory> {
+  async deleteImage(id: number, admin: Admin): Promise<TaskCategory> {
     const category = await this.findOne(id);
 
     if (!category.imagePublicId) {
@@ -126,6 +139,7 @@ export class CategoriesService {
     // Update category
     category.image = undefined;
     category.imagePublicId = undefined;
+    category.lastUpdatedBy = admin;
     await this.em.flush();
 
     return category;
