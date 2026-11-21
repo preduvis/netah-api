@@ -533,6 +533,46 @@ export class UsersService {
     };
   }
 
+  async getUserActivity(
+    user: User,
+    options?: {
+      type?: UserActivityType;
+      limit?: number;
+      offset?: number;
+    },
+  ) {
+    const limit = Math.min(options?.limit || 50, 100);
+    const offset = options?.offset || 0;
+
+    const filter: any = { user };
+    if (options?.type) {
+      filter.type = options.type;
+    }
+
+    const [activities, total] = await this.userActivityRepo.findAndCount(filter, {
+      orderBy: { timestamp: 'DESC' },
+      limit,
+      offset,
+    });
+
+    return {
+      activities: activities.map((activity) => ({
+        id: activity.id,
+        type: activity.type,
+        action: activity.action,
+        details: activity.details,
+        metadata: activity.metadata,
+        ipAddress: activity.ipAddress,
+        userAgent: activity.userAgent,
+        timestamp: activity.timestamp,
+      })),
+      total,
+      limit,
+      offset,
+      hasMore: offset + activities.length < total,
+    };
+  }
+
   // Helper to log user activity
   async logUserActivity(params: {
     user: User;
