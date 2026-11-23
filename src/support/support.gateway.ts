@@ -258,19 +258,7 @@ export class SupportGateway
           ticketId,
           message: savedMessage.message,
           senderType: savedMessage.senderType,
-          sender:
-            savedMessage.senderType === SenderType.USER
-              ? {
-                  id: savedMessage.user?.id,
-                  firstName: savedMessage.user?.firstName,
-                  lastName: savedMessage.user?.lastName,
-                  profileImage: savedMessage.user?.profileImage,
-                }
-              : {
-                  id: savedMessage.admin?.id,
-                  firstName: savedMessage.admin?.firstName,
-                  lastName: savedMessage.admin?.lastName,
-                },
+          sender: savedMessage.sender,
           createdAt: savedMessage.createdAt,
           isRead: savedMessage.isRead,
         };
