@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository, EntityManager } from '@mikro-orm/postgresql';
 import { CreateAuthDto } from './dto/create-auth.dto';
@@ -35,10 +40,15 @@ export class AuthService {
   ) {}
 
   async login(createAuthDto: CreateAuthDto, res: Response, req?: any) {
-    const user = await this.usersService.findOneByEmailWithPassword(createAuthDto.email);
+    const user = await this.usersService.findOneByEmailWithPassword(
+      createAuthDto.email,
+    );
     if (!user) throw new UnauthorizedException('Invalid Credentials');
 
-    const passwordMatch = await bcrypt.compare(createAuthDto.password, user.password);
+    const passwordMatch = await bcrypt.compare(
+      createAuthDto.password,
+      user.password,
+    );
     if (!passwordMatch) throw new UnauthorizedException('Invalid Credentials');
 
     const payload = {
@@ -72,8 +82,12 @@ export class AuthService {
   }
 
   async register(signupDto: CreateUserDto, res: Response, req?: any) {
-    const existingEmail = await this.usersService.findOneByEmailWithPassword(signupDto.email);
-    const existingPhone = await this.usersService.findOneByPhoneNumber(signupDto.phoneNumber);
+    const existingEmail = await this.usersService.findOneByEmailWithPassword(
+      signupDto.email,
+    );
+    const existingPhone = await this.usersService.findOneByPhoneNumber(
+      signupDto.phoneNumber,
+    );
 
     if (existingEmail || existingPhone)
       throw new ConflictException(
@@ -122,11 +136,16 @@ export class AuthService {
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
-    const user = await this.usersService.findOneByEmailWithPassword(forgotPasswordDto.email);
+    const user = await this.usersService.findOneByEmailWithPassword(
+      forgotPasswordDto.email,
+    );
 
     // Always return success message to prevent email enumeration
     if (!user) {
-      return { message: 'If an account exists with this email, you will receive a password reset code' };
+      return {
+        message:
+          'If an account exists with this email, you will receive a password reset code',
+      };
     }
 
     const otp = this.generateOtp();
@@ -136,13 +155,22 @@ export class AuthService {
     user.passwordResetOtpExpiry = expiryTime;
     await this.usersService.update(user.id, user);
 
-    await this.emailService.sendPasswordResetOtp(user.email, otp, user.firstName);
+    await this.emailService.sendPasswordResetOtp(
+      user.email,
+      otp,
+      user.firstName,
+    );
 
-    return { message: 'If an account exists with this email, you will receive a password reset code' };
+    return {
+      message:
+        'If an account exists with this email, you will receive a password reset code',
+    };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    const user = await this.usersService.findOneByEmailWithPassword(verifyOtpDto.email);
+    const user = await this.usersService.findOneByEmailWithPassword(
+      verifyOtpDto.email,
+    );
     if (!user) {
       throw new BadRequestException('User with this email does not exist');
     }
@@ -163,7 +191,9 @@ export class AuthService {
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto, req?: any) {
-    const user = await this.usersService.findOneByEmailWithPassword(resetPasswordDto.email);
+    const user = await this.usersService.findOneByEmailWithPassword(
+      resetPasswordDto.email,
+    );
     if (!user) {
       throw new BadRequestException('User with this email does not exist');
     }
@@ -200,13 +230,18 @@ export class AuthService {
   }
 
   async adminLogin(adminLoginDto: AdminLoginDto, res: Response) {
-    const admin = await this.adminsService.findOneByEmailWithPassword(adminLoginDto.email);
+    const admin = await this.adminsService.findOneByEmailWithPassword(
+      adminLoginDto.email,
+    );
 
     if (!admin) {
       throw new UnauthorizedException('Invalid Credentials');
     }
 
-    const passwordMatch = await bcrypt.compare(adminLoginDto.password, admin.password);
+    const passwordMatch = await bcrypt.compare(
+      adminLoginDto.password,
+      admin.password,
+    );
     if (!passwordMatch) throw new UnauthorizedException('Invalid Credentials');
 
     const payload = {
@@ -230,14 +265,22 @@ export class AuthService {
     };
   }
 
-  async changeAdminPassword(admin: Admin, changePasswordDto: ChangePasswordDto) {
-    const fullAdmin = await this.adminsService.findOneByEmailWithPassword(admin.email);
+  async changeAdminPassword(
+    admin: Admin,
+    changePasswordDto: ChangePasswordDto,
+  ) {
+    const fullAdmin = await this.adminsService.findOneByEmailWithPassword(
+      admin.email,
+    );
 
     if (!fullAdmin) {
       throw new UnauthorizedException('Admin access required');
     }
 
-    const passwordMatch = await bcrypt.compare(changePasswordDto.currentPassword, fullAdmin.password);
+    const passwordMatch = await bcrypt.compare(
+      changePasswordDto.currentPassword,
+      fullAdmin.password,
+    );
     if (!passwordMatch) {
       throw new BadRequestException('Current password is incorrect');
     }
@@ -250,14 +293,18 @@ export class AuthService {
   }
 
   async generate2FASecret(admin: Admin) {
-    const fullAdmin = await this.adminsService.findOneByEmailWithPassword(admin.email);
+    const fullAdmin = await this.adminsService.findOneByEmailWithPassword(
+      admin.email,
+    );
 
     if (!fullAdmin) {
       throw new UnauthorizedException('Admin access required');
     }
 
     if (fullAdmin.mustChangePassword) {
-      throw new BadRequestException('Please change your password before setting up 2FA');
+      throw new BadRequestException(
+        'Please change your password before setting up 2FA',
+      );
     }
 
     const secret = speakeasy.generateSecret({
@@ -279,14 +326,18 @@ export class AuthService {
   }
 
   async enable2FA(admin: Admin, verify2FADto: Verify2FADto) {
-    const fullAdmin = await this.adminsService.findOneByEmailWithPassword(admin.email);
+    const fullAdmin = await this.adminsService.findOneByEmailWithPassword(
+      admin.email,
+    );
 
     if (!fullAdmin) {
       throw new UnauthorizedException('Admin access required');
     }
 
     if (fullAdmin.mustChangePassword) {
-      throw new BadRequestException('Please change your password before setting up 2FA');
+      throw new BadRequestException(
+        'Please change your password before setting up 2FA',
+      );
     }
 
     if (!fullAdmin.twoFactorSecret) {
@@ -313,7 +364,9 @@ export class AuthService {
   }
 
   async disable2FA(admin: Admin, verify2FADto: Verify2FADto) {
-    const fullAdmin = await this.adminsService.findOneByEmailWithPassword(admin.email);
+    const fullAdmin = await this.adminsService.findOneByEmailWithPassword(
+      admin.email,
+    );
 
     if (!fullAdmin) {
       throw new UnauthorizedException('Admin access required');
@@ -343,14 +396,23 @@ export class AuthService {
     return { message: '2FA disabled successfully' };
   }
 
-  async adminLogin2FA(adminLoginDto: AdminLoginDto, res: Response, req?: Request) {
-    const admin = await this.adminsService.findOneByEmailWithPassword(adminLoginDto.email);
+  async adminLogin2FA(
+    adminLoginDto: AdminLoginDto,
+    res: Response,
+    req?: Request,
+  ) {
+    const admin = await this.adminsService.findOneByEmailWithPassword(
+      adminLoginDto.email,
+    );
 
     if (!admin) {
       throw new UnauthorizedException('Invalid Credentials');
     }
 
-    const passwordMatch = await bcrypt.compare(adminLoginDto.password, admin.password);
+    const passwordMatch = await bcrypt.compare(
+      adminLoginDto.password,
+      admin.password,
+    );
     if (!passwordMatch) throw new UnauthorizedException('Invalid Credentials');
 
     // Check if 2FA is enabled
@@ -378,7 +440,9 @@ export class AuthService {
       email: admin.email,
     };
 
-    const token = this.jwtService.sign(payload);
+    const token = this.jwtService.sign(payload, {
+      secret: process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET,
+    });
     const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('admin_token', token, {
@@ -408,20 +472,29 @@ export class AuthService {
     };
   }
 
-  async verify2FALogin(pendingToken: string, code: string, res: Response, req?: Request) {
+  async verify2FALogin(
+    pendingToken: string,
+    code: string,
+    res: Response,
+    req?: Request,
+  ) {
     // Verify pending token
     let payload: any;
     try {
       payload = this.jwtService.verify(pendingToken);
     } catch (error) {
-      throw new UnauthorizedException('Invalid or expired session. Please login again.');
+      throw new UnauthorizedException(
+        'Invalid or expired session. Please login again.',
+      );
     }
 
     if (!payload.pending2FA) {
       throw new UnauthorizedException('Invalid session token');
     }
 
-    const admin = await this.adminsService.findOneByEmailWithPassword(payload.email);
+    const admin = await this.adminsService.findOneByEmailWithPassword(
+      payload.email,
+    );
 
     if (!admin || !admin.twoFactorEnabled) {
       throw new UnauthorizedException('Invalid session');
@@ -445,7 +518,9 @@ export class AuthService {
       email: admin.email,
     };
 
-    const token = this.jwtService.sign(finalPayload);
+    const token = this.jwtService.sign(finalPayload, {
+      secret: process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET,
+    });
     const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('admin_token', token, {
