@@ -21,13 +21,17 @@ export class AdminsService {
     private readonly em: EntityManager,
   ) {}
 
-  async create(createAdminDto: CreateAdminDto | Partial<Admin>): Promise<Admin> {
+  async create(
+    createAdminDto: CreateAdminDto | Partial<Admin>,
+  ): Promise<Admin> {
     const admin = this.em.create(Admin, createAdminDto as any);
     await this.em.persistAndFlush(admin);
     return admin;
   }
 
-  async createWithoutFlush(createAdminDto: CreateAdminDto | Partial<Admin>): Promise<Admin> {
+  async createWithoutFlush(
+    createAdminDto: CreateAdminDto | Partial<Admin>,
+  ): Promise<Admin> {
     const admin = this.em.create(Admin, createAdminDto as any);
     await this.em.persist(admin);
     return admin;
@@ -46,7 +50,10 @@ export class AdminsService {
   }
 
   async findOneByEmailWithPassword(email: string): Promise<Admin | null> {
-    return this.adminRepository.findOne({ email: { $ilike: email } }, { populate: ['password'] });
+    return this.adminRepository.findOne(
+      { email: { $ilike: email } },
+      { populate: ['password'] },
+    );
   }
 
   async findOneByPhoneNumber(phoneNumber: string): Promise<Admin | null> {
@@ -132,21 +139,27 @@ export class AdminsService {
     });
 
     // Collect unique taskIds and userIds
-    const taskIds = [...new Set(logs.map(log => log.taskId).filter(Boolean))] as string[];
-    const userIds = [...new Set(logs.map(log => log.userId).filter(Boolean))] as string[];
+    const taskIds = [
+      ...new Set(logs.map((log) => log.taskId).filter(Boolean)),
+    ] as string[];
+    const userIds = [
+      ...new Set(logs.map((log) => log.userId).filter(Boolean)),
+    ] as string[];
 
     // Fetch all related tasks and users in bulk
-    const tasks = taskIds.length > 0
-      ? await this.taskRepo.find({ publicId: { $in: taskIds } })
-      : [];
+    const tasks =
+      taskIds.length > 0
+        ? await this.taskRepo.find({ publicId: { $in: taskIds } })
+        : [];
 
-    const users = userIds.length > 0
-      ? await this.userRepo.find({ uuid: { $in: userIds } })
-      : [];
+    const users =
+      userIds.length > 0
+        ? await this.userRepo.find({ uuid: { $in: userIds } })
+        : [];
 
     // Create lookup maps for quick access
-    const taskMap = new Map(tasks.map(task => [task.publicId, task]));
-    const userMap = new Map(users.map(user => [user.uuid, user]));
+    const taskMap = new Map(tasks.map((task) => [task.publicId, task]));
+    const userMap = new Map(users.map((user) => [user.uuid, user]));
 
     return {
       logs: logs.map((log) => {
@@ -162,7 +175,9 @@ export class AdminsService {
           },
           action: log.action,
           task: task ? { id: task.publicId, title: task.title } : null,
-          user: user ? { id: user.uuid, name: `${user.firstName} ${user.lastName}` } : null,
+          user: user
+            ? { id: user.uuid, name: `${user.firstName} ${user.lastName}` }
+            : null,
           note: log.note,
           ipAddress: log.ipAddress,
           beforeState: log.beforeState,

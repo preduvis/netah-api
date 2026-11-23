@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+} from 'class-validator';
 
 export class AdminLogin2FADto {
   @ApiProperty({
@@ -17,7 +23,7 @@ export class AdminLogin2FADto {
   @ApiProperty({
     example: '123456',
     description: '6-digit 2FA code (required if 2FA enabled)',
-    required: false
+    required: false,
   })
   @IsString()
   @IsOptional()

@@ -11,7 +11,9 @@ export class AdminSeeder extends Seeder {
     const adminLastName = process.env.ADMIN_LAST_NAME || 'Administrator';
 
     if (!adminEmail || !adminPassword) {
-      console.error('❌ ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env file');
+      console.error(
+        '❌ ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env file',
+      );
       return;
     }
 

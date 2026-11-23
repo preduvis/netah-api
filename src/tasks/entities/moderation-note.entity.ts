@@ -1,9 +1,4 @@
-import {
-  Entity,
-  ManyToOne,
-  PrimaryKey,
-  Property,
-} from '@mikro-orm/core';
+import { Entity, ManyToOne, PrimaryKey, Property } from '@mikro-orm/core';
 import { Task } from './task.entity';
 import { Admin } from 'src/admins/entities/admin.entity';
 

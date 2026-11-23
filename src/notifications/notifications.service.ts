@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityManager, EntityRepository } from '@mikro-orm/postgresql';
-import { Notification, NotificationType } from 'src/tasks/entities/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from 'src/tasks/entities/notification.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Task } from 'src/tasks/entities/task.entity';
 import { TaskBid } from 'src/tasks/entities/task-bid.entity';

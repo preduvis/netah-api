@@ -21,7 +21,10 @@ import { CounterTaskBidDto } from './dto/counter-task-bid.dto';
 import { ApproveTaskDto } from './dto/approve-task.dto';
 import { DisputeTaskDto } from './dto/dispute-task.dto';
 import { ReviewPosterDto } from './dto/review-poster.dto';
-import { NegotiationRole, TaskBidNegotiation } from './entities/task-bid-negotiation.entity';
+import {
+  NegotiationRole,
+  TaskBidNegotiation,
+} from './entities/task-bid-negotiation.entity';
 import { Payment, PaymentStatus } from './entities/payment.entity';
 import { SystemSettings } from './entities/system-settings.entity';
 import { NotificationType } from './entities/notification.entity';
@@ -31,9 +34,18 @@ import { PaystackService } from './paystack.service';
 import { UsersService } from 'src/users/users.service';
 import { UserActivityType } from 'src/users/entities/user-activity.entity';
 import { v4 as uuidv4 } from 'uuid';
-import { TaskFlag, FlagStatus, FlagSeverity, FlagReporterRole } from './entities/task-flag.entity';
+import {
+  TaskFlag,
+  FlagStatus,
+  FlagSeverity,
+  FlagReporterRole,
+} from './entities/task-flag.entity';
 import { ModerationNote } from './entities/moderation-note.entity';
-import { TaskActivity, ActivityType, ActorRole } from './entities/task-activity.entity';
+import {
+  TaskActivity,
+  ActivityType,
+  ActorRole,
+} from './entities/task-activity.entity';
 import { AdminAuditLog } from './entities/admin-audit-log.entity';
 import { Admin } from 'src/admins/entities/admin.entity';
 import {
@@ -92,7 +104,9 @@ export class TasksService {
   ) {}
 
   // Helper method to serialize user for public consumption
-  private async serializePublicUser(user: User | null | undefined): Promise<any> {
+  private async serializePublicUser(
+    user: User | null | undefined,
+  ): Promise<any> {
     if (!user) return null;
 
     // Extract values before building object to ensure no entity references
@@ -143,7 +157,11 @@ export class TasksService {
 
       const avgRating =
         allRatings.length > 0
-          ? parseFloat((allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length).toFixed(1))
+          ? parseFloat(
+              (
+                allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length
+              ).toFixed(1),
+            )
           : 0;
 
       publicUser.rating = avgRating;
@@ -214,7 +232,6 @@ export class TasksService {
     await this.em.persist(activity);
     return activity;
   }
-
 
   async create(createTaskDto: CreateTaskDto, currentUser: User) {
     const category = await this.taskCategoryRepo.findOne({
@@ -320,25 +337,27 @@ export class TasksService {
       populate: ['category', 'postedBy'],
     });
 
-    return Promise.all(tasks.map(async task => ({
-      id: task.id,
-      publicId: task.publicId,
-      title: task.title,
-      description: task.description,
-      location: task.location,
-      reward: task.reward,
-      deadline: task.deadline,
-      requirements: task.requirements,
-      images: (task.images || []).map(img => img.url),
-      status: task.status,
-      createdAt: task.createdAt,
-      category: {
-        id: task.category.id,
-        name: task.category.name,
-        description: task.category.description,
-      },
-      postedBy: await this.serializePublicUser(task.postedBy),
-    })));
+    return Promise.all(
+      tasks.map(async (task) => ({
+        id: task.id,
+        publicId: task.publicId,
+        title: task.title,
+        description: task.description,
+        location: task.location,
+        reward: task.reward,
+        deadline: task.deadline,
+        requirements: task.requirements,
+        images: (task.images || []).map((img) => img.url),
+        status: task.status,
+        createdAt: task.createdAt,
+        category: {
+          id: task.category.id,
+          name: task.category.name,
+          description: task.category.description,
+        },
+        postedBy: await this.serializePublicUser(task.postedBy),
+      })),
+    );
   }
 
   async findOne(id: number) {
@@ -378,7 +397,7 @@ export class TasksService {
       reward: task.reward,
       deadline: task.deadline,
       requirements: task.requirements,
-      images: (task.images || []).map(img => img.url),
+      images: (task.images || []).map((img) => img.url),
       status: task.status,
       rating: task.rating,
       feedback: task.feedback,
@@ -400,7 +419,11 @@ export class TasksService {
       const isRunner = task.assignedTo?.id === currentUser.id;
       const isPoster = task.postedBy.id === currentUser.id;
 
-      response['hasReviewed'] = isRunner ? !!task.posterRating : isPoster ? !!task.rating : false;
+      response['hasReviewed'] = isRunner
+        ? !!task.posterRating
+        : isPoster
+          ? !!task.rating
+          : false;
     }
 
     return response;
@@ -429,7 +452,9 @@ export class TasksService {
     });
 
     if (existingCategory) {
-      throw new ConflictException(`Category with name ${normalizedName} already exists`);
+      throw new ConflictException(
+        `Category with name ${normalizedName} already exists`,
+      );
     }
     const taskCategory = this.taskCategoryRepo.create({
       ...createTaskCategoryDto,
@@ -451,7 +476,11 @@ export class TasksService {
     await this.em.flush();
   }
 
-  async createBid(id: string, createTaskBidDto: CreateTaskBidDto, currentUser: User) {
+  async createBid(
+    id: string,
+    createTaskBidDto: CreateTaskBidDto,
+    currentUser: User,
+  ) {
     const task = await this.taskRepo.findOneOrFail(
       {
         publicId: id,
@@ -482,7 +511,9 @@ export class TasksService {
     });
 
     if (existingBid) {
-      throw new BadRequestException('You already have an active bid on this task');
+      throw new BadRequestException(
+        'You already have an active bid on this task',
+      );
     }
 
     // Get full user object with names
@@ -598,20 +629,22 @@ export class TasksService {
       { populate: ['createdBy'] },
     );
 
-    return Promise.all(taskBids.map(async bid => ({
-      id: bid.id,
-      amount: bid.amount,
-      message: bid.message,
-      status: bid.status,
-      createdAt: bid.createdAt,
-      createdBy: await this.serializePublicUser(bid.createdBy),
-    })));
+    return Promise.all(
+      taskBids.map(async (bid) => ({
+        id: bid.id,
+        amount: bid.amount,
+        message: bid.message,
+        status: bid.status,
+        createdAt: bid.createdAt,
+        createdBy: await this.serializePublicUser(bid.createdBy),
+      })),
+    );
   }
 
   async findMyTasks(currentUser: User): Promise<MyTaskResponseDto[]> {
     const tasks = await this.taskRepo.find(
       { postedBy: currentUser },
-      { populate: ['category', 'assignedTo', 'postedBy'], },
+      { populate: ['category', 'assignedTo', 'postedBy'] },
     );
 
     const tasksWithBidCount: MyTaskResponseDto[] = await Promise.all(
@@ -652,30 +685,32 @@ export class TasksService {
       { populate: ['task', 'task.category', 'task.postedBy'] },
     );
 
-    return Promise.all(bids.map(async bid => ({
-      id: bid.id,
-      amount: bid.amount,
-      message: bid.message,
-      status: bid.status,
-      createdAt: bid.createdAt,
-      task: {
-        id: bid.task.id,
-        publicId: bid.task.publicId,
-        title: bid.task.title,
-        description: bid.task.description,
-        location: bid.task.location,
-        reward: bid.task.reward,
-        deadline: bid.task.deadline,
-        status: bid.task.status,
-        createdAt: bid.task.createdAt,
-        category: {
-          id: bid.task.category.id,
-          name: bid.task.category.name,
-          description: bid.task.category.description,
+    return Promise.all(
+      bids.map(async (bid) => ({
+        id: bid.id,
+        amount: bid.amount,
+        message: bid.message,
+        status: bid.status,
+        createdAt: bid.createdAt,
+        task: {
+          id: bid.task.id,
+          publicId: bid.task.publicId,
+          title: bid.task.title,
+          description: bid.task.description,
+          location: bid.task.location,
+          reward: bid.task.reward,
+          deadline: bid.task.deadline,
+          status: bid.task.status,
+          createdAt: bid.task.createdAt,
+          category: {
+            id: bid.task.category.id,
+            name: bid.task.category.name,
+            description: bid.task.category.description,
+          },
+          postedBy: await this.serializePublicUser(bid.task.postedBy),
         },
-        postedBy: await this.serializePublicUser(bid.task.postedBy),
-      }
-    })));
+      })),
+    );
   }
 
   async getMyAssignedTasks(currentUser: User): Promise<any[]> {
@@ -684,31 +719,33 @@ export class TasksService {
       { populate: ['category', 'postedBy', 'assignedTo'] },
     );
 
-    return Promise.all(tasks.map(async (task) => ({
-      id: task.id,
-      publicId: task.publicId,
-      title: task.title,
-      description: task.description,
-      location: task.location,
-      reward: task.reward,
-      deadline: task.deadline,
-      requirements: task.requirements,
-      status: task.status,
-      rating: task.rating,
-      feedback: task.feedback,
-      posterRating: task.posterRating,
-      posterReview: task.posterReview,
-      completedAt: task.completedAt,
-      createdAt: task.createdAt,
-      category: {
-        id: task.category.id,
-        name: task.category.name,
-        description: task.category.description,
-      },
-      postedBy: await this.serializePublicUser(task.postedBy),
-      assignedTo: await this.serializePublicUser(task.assignedTo),
-      hasReviewed: !!task.posterRating,
-    })));
+    return Promise.all(
+      tasks.map(async (task) => ({
+        id: task.id,
+        publicId: task.publicId,
+        title: task.title,
+        description: task.description,
+        location: task.location,
+        reward: task.reward,
+        deadline: task.deadline,
+        requirements: task.requirements,
+        status: task.status,
+        rating: task.rating,
+        feedback: task.feedback,
+        posterRating: task.posterRating,
+        posterReview: task.posterReview,
+        completedAt: task.completedAt,
+        createdAt: task.createdAt,
+        category: {
+          id: task.category.id,
+          name: task.category.name,
+          description: task.category.description,
+        },
+        postedBy: await this.serializePublicUser(task.postedBy),
+        assignedTo: await this.serializePublicUser(task.assignedTo),
+        hasReviewed: !!task.posterRating,
+      })),
+    );
   }
 
   async counterTaskBid(
@@ -747,12 +784,16 @@ export class TasksService {
       throw new NotFoundException('Task bid not found');
     }
 
-    if ([TaskBidStatus.ACCEPTED, TaskBidStatus.REJECTED].includes(taskBid.status)) {
+    if (
+      [TaskBidStatus.ACCEPTED, TaskBidStatus.REJECTED].includes(taskBid.status)
+    ) {
       throw new BadRequestException('You cannot counterbid on a closed bid');
     }
 
     if (!isTaskPoster && taskBid.createdBy.id !== currentUser.id) {
-      throw new UnauthorizedException('You are not allowed to counter this bid');
+      throw new UnauthorizedException(
+        'You are not allowed to counter this bid',
+      );
     }
 
     // Get full user object with names
@@ -763,7 +804,9 @@ export class TasksService {
 
     taskBid.amount = counterTaskBidDto.amount;
     taskBid.message = counterTaskBidDto.message ?? taskBid.message;
-    taskBid.status = isTaskPoster ? TaskBidStatus.COUNTERED_BY_CLIENT : TaskBidStatus.COUNTERED_BY_RUNNER;
+    taskBid.status = isTaskPoster
+      ? TaskBidStatus.COUNTERED_BY_CLIENT
+      : TaskBidStatus.COUNTERED_BY_RUNNER;
 
     const bidHistory = this.taskBidNegotiationRepo.create({
       taskBid,
@@ -794,7 +837,9 @@ export class TasksService {
     await this.em.flush();
 
     // Notify the other party of counter offer
-    const notificationRecipient = isTaskPoster ? taskBid.createdBy : task.postedBy;
+    const notificationRecipient = isTaskPoster
+      ? taskBid.createdBy
+      : task.postedBy;
     const notificationType = isTaskPoster
       ? NotificationType.COUNTER_OFFER_CLIENT
       : NotificationType.COUNTER_OFFER_RUNNER;
@@ -840,7 +885,9 @@ export class TasksService {
     }
 
     if (!isTaskPoster && taskBid.createdBy.id !== currentUser.id) {
-      throw new UnauthorizedException('You are not allowed to view this bid history');
+      throw new UnauthorizedException(
+        'You are not allowed to view this bid history',
+      );
     }
 
     const bidHistory = await this.taskBidNegotiationRepo.find(
@@ -869,7 +916,11 @@ export class TasksService {
     };
   }
 
-  async getPaymentBreakdown(publicId: string, bidId: string, currentUser: User) {
+  async getPaymentBreakdown(
+    publicId: string,
+    bidId: string,
+    currentUser: User,
+  ) {
     const task = await this.taskRepo.findOne({ publicId });
 
     if (!task) {
@@ -877,7 +928,9 @@ export class TasksService {
     }
 
     if (task.postedBy.id !== currentUser.id) {
-      throw new UnauthorizedException('Only task owner can view payment breakdown');
+      throw new UnauthorizedException(
+        'Only task owner can view payment breakdown',
+      );
     }
 
     const parsedBidId = Number(bidId);
@@ -903,9 +956,10 @@ export class TasksService {
     }
 
     // Get service charge settings
-    const serviceChargePercentageSetting = await this.systemSettingsRepo.findOne({
-      key: 'service_charge_percentage',
-    });
+    const serviceChargePercentageSetting =
+      await this.systemSettingsRepo.findOne({
+        key: 'service_charge_percentage',
+      });
     const serviceChargeFixedSetting = await this.systemSettingsRepo.findOne({
       key: 'service_charge_fixed',
     });
@@ -1005,9 +1059,10 @@ export class TasksService {
     }
 
     // Get service charge settings
-    const serviceChargePercentageSetting = await this.systemSettingsRepo.findOne({
-      key: 'service_charge_percentage',
-    });
+    const serviceChargePercentageSetting =
+      await this.systemSettingsRepo.findOne({
+        key: 'service_charge_percentage',
+      });
     const serviceChargeFixedSetting = await this.systemSettingsRepo.findOne({
       key: 'service_charge_fixed',
     });
@@ -1097,9 +1152,13 @@ export class TasksService {
 
   async verifyPayment(reference: string): Promise<any> {
     // Verify transaction with Paystack
-    const paystackVerification = await this.paystackService.verifyTransaction(reference);
+    const paystackVerification =
+      await this.paystackService.verifyTransaction(reference);
 
-    if (!paystackVerification.status || paystackVerification.data.status !== 'success') {
+    if (
+      !paystackVerification.status ||
+      paystackVerification.data.status !== 'success'
+    ) {
       throw new BadRequestException('Payment verification failed');
     }
 
@@ -1336,7 +1395,9 @@ export class TasksService {
       taskBid,
     );
 
-    return { message: 'Bid rejected successfully. Runner can bid again if desired.' };
+    return {
+      message: 'Bid rejected successfully. Runner can bid again if desired.',
+    };
   }
 
   async withdrawBid(publicId: string, bidId: string, currentUser: User) {
@@ -1367,7 +1428,9 @@ export class TasksService {
     }
 
     if (taskBid.createdBy.id !== currentUser.id) {
-      throw new UnauthorizedException('Only the bid creator can withdraw this bid');
+      throw new UnauthorizedException(
+        'Only the bid creator can withdraw this bid',
+      );
     }
 
     if (taskBid.status === TaskBidStatus.ACCEPTED) {
@@ -1439,7 +1502,9 @@ export class TasksService {
     }
 
     if (task.postedBy.id !== currentUser.id) {
-      throw new UnauthorizedException('Only task poster can view completion details');
+      throw new UnauthorizedException(
+        'Only task poster can view completion details',
+      );
     }
 
     if (task.status !== TaskStatusEnum.PENDING_APPROVAL) {
@@ -1502,11 +1567,15 @@ export class TasksService {
     }
 
     if (!task.assignedTo || task.assignedTo.id !== currentUser.id) {
-      throw new UnauthorizedException('Only the assigned runner can mark task as completed');
+      throw new UnauthorizedException(
+        'Only the assigned runner can mark task as completed',
+      );
     }
 
     if (task.status !== TaskStatusEnum.IN_PROGRESS) {
-      throw new BadRequestException('Only in-progress tasks can be marked as completed');
+      throw new BadRequestException(
+        'Only in-progress tasks can be marked as completed',
+      );
     }
 
     task.status = TaskStatusEnum.PENDING_APPROVAL;
@@ -1564,7 +1633,11 @@ export class TasksService {
     return task;
   }
 
-  async approveAndReleaseFunds(publicId: string, approveTaskDto: ApproveTaskDto, currentUser: User) {
+  async approveAndReleaseFunds(
+    publicId: string,
+    approveTaskDto: ApproveTaskDto,
+    currentUser: User,
+  ) {
     const task = await this.taskRepo.findOne(
       { publicId },
       { populate: ['postedBy', 'assignedTo'] },
@@ -1575,7 +1648,9 @@ export class TasksService {
     }
 
     if (task.postedBy.id !== currentUser.id) {
-      throw new UnauthorizedException('Only task poster can approve and release funds');
+      throw new UnauthorizedException(
+        'Only task poster can approve and release funds',
+      );
     }
 
     if (task.status !== TaskStatusEnum.PENDING_APPROVAL) {
@@ -1709,7 +1784,11 @@ export class TasksService {
     };
   }
 
-  async disputeTask(publicId: string, disputeTaskDto: DisputeTaskDto, currentUser: User) {
+  async disputeTask(
+    publicId: string,
+    disputeTaskDto: DisputeTaskDto,
+    currentUser: User,
+  ) {
     const task = await this.taskRepo.findOne(
       { publicId },
       { populate: ['postedBy', 'assignedTo'] },
@@ -1727,17 +1806,28 @@ export class TasksService {
     const isRunner = task.assignedTo.id === currentUser.id;
 
     if (!isPoster && !isRunner) {
-      throw new UnauthorizedException('Only task poster or runner can dispute a task');
+      throw new UnauthorizedException(
+        'Only task poster or runner can dispute a task',
+      );
     }
 
     // Poster can only dispute during PENDING_APPROVAL
     if (isPoster && task.status !== TaskStatusEnum.PENDING_APPROVAL) {
-      throw new BadRequestException('Poster can only dispute pending approval tasks');
+      throw new BadRequestException(
+        'Poster can only dispute pending approval tasks',
+      );
     }
 
     // Runner can dispute during IN_PROGRESS or PENDING_APPROVAL
-    if (isRunner && ![TaskStatusEnum.IN_PROGRESS, TaskStatusEnum.PENDING_APPROVAL].includes(task.status)) {
-      throw new BadRequestException('Runner can only dispute in-progress or pending approval tasks');
+    if (
+      isRunner &&
+      ![TaskStatusEnum.IN_PROGRESS, TaskStatusEnum.PENDING_APPROVAL].includes(
+        task.status,
+      )
+    ) {
+      throw new BadRequestException(
+        'Runner can only dispute in-progress or pending approval tasks',
+      );
     }
 
     const previousStatus = task.status;
@@ -1804,11 +1894,16 @@ export class TasksService {
 
     return {
       task,
-      message: 'Dispute submitted successfully. Our support team will review this case.',
+      message:
+        'Dispute submitted successfully. Our support team will review this case.',
     };
   }
 
-  async reviewPoster(publicId: string, reviewPosterDto: ReviewPosterDto, currentUser: User) {
+  async reviewPoster(
+    publicId: string,
+    reviewPosterDto: ReviewPosterDto,
+    currentUser: User,
+  ) {
     const task = await this.taskRepo.findOne(
       { publicId },
       { populate: ['postedBy', 'assignedTo'] },
@@ -1819,7 +1914,9 @@ export class TasksService {
     }
 
     if (!task.assignedTo || task.assignedTo.id !== currentUser.id) {
-      throw new UnauthorizedException('Only the assigned runner can review the poster');
+      throw new UnauthorizedException(
+        'Only the assigned runner can review the poster',
+      );
     }
 
     if (task.status !== TaskStatusEnum.COMPLETED) {
@@ -1852,7 +1949,9 @@ export class TasksService {
     await this.em.flush();
 
     // Notify poster of review
-    const reviewText = reviewPosterDto.review ? ` Review: "${reviewPosterDto.review}"` : '';
+    const reviewText = reviewPosterDto.review
+      ? ` Review: "${reviewPosterDto.review}"`
+      : '';
     await this.notificationsService.createNotification(
       task.postedBy,
       NotificationType.TASK_STATUS_CHANGED,
@@ -1867,8 +1966,15 @@ export class TasksService {
     };
   }
 
-  async uploadTaskImage(publicId: string, currentUser: User, file: Express.Multer.File) {
-    const task = await this.taskRepo.findOne({ publicId }, { populate: ['postedBy'] });
+  async uploadTaskImage(
+    publicId: string,
+    currentUser: User,
+    file: Express.Multer.File,
+  ) {
+    const task = await this.taskRepo.findOne(
+      { publicId },
+      { populate: ['postedBy'] },
+    );
 
     if (!task) {
       throw new NotFoundException('Task not found');
@@ -1883,10 +1989,8 @@ export class TasksService {
     }
 
     // Upload to Cloudinary
-    const { url, publicId: imagePublicId } = await this.cloudinaryService.uploadImage(
-      file,
-      'netah/tasks',
-    );
+    const { url, publicId: imagePublicId } =
+      await this.cloudinaryService.uploadImage(file, 'netah/tasks');
 
     // Add to task images array
     if (!task.images) {
@@ -1902,8 +2006,15 @@ export class TasksService {
     };
   }
 
-  async deleteTaskImage(publicId: string, imageIndex: number, currentUser: User) {
-    const task = await this.taskRepo.findOne({ publicId }, { populate: ['postedBy'] });
+  async deleteTaskImage(
+    publicId: string,
+    imageIndex: number,
+    currentUser: User,
+  ) {
+    const task = await this.taskRepo.findOne(
+      { publicId },
+      { populate: ['postedBy'] },
+    );
 
     if (!task) {
       throw new NotFoundException('Task not found');
@@ -1941,7 +2052,13 @@ export class TasksService {
     hasFlagsOnly?: boolean;
     page?: number;
     pageSize?: number;
-    sort?: 'created_asc' | 'created_desc' | 'reward_asc' | 'reward_desc' | 'deadline_asc' | 'deadline_desc';
+    sort?:
+      | 'created_asc'
+      | 'created_desc'
+      | 'reward_asc'
+      | 'reward_desc'
+      | 'deadline_asc'
+      | 'deadline_desc';
   }) {
     const page = options?.page || 1;
     const pageSize = Math.min(options?.pageSize || 20, 100);
@@ -1979,7 +2096,7 @@ export class TasksService {
     if (options?.hasFlagsOnly) {
       const openFlags = await this.taskFlagRepo.find(
         { status: FlagStatus.OPEN },
-        { populate: ['task'] }
+        { populate: ['task'] },
       );
 
       const taskIds = [...new Set(openFlags.map((flag) => flag.task.id))];
@@ -2104,10 +2221,18 @@ export class TasksService {
 
   async adminGetTaskStats() {
     const totalTasks = await this.taskRepo.count();
-    const openTasks = await this.taskRepo.count({ status: TaskStatusEnum.OPEN });
-    const inProgressTasks = await this.taskRepo.count({ status: TaskStatusEnum.IN_PROGRESS });
-    const completedTasks = await this.taskRepo.count({ status: TaskStatusEnum.COMPLETED });
-    const disputedTasks = await this.taskRepo.count({ status: TaskStatusEnum.DISPUTED });
+    const openTasks = await this.taskRepo.count({
+      status: TaskStatusEnum.OPEN,
+    });
+    const inProgressTasks = await this.taskRepo.count({
+      status: TaskStatusEnum.IN_PROGRESS,
+    });
+    const completedTasks = await this.taskRepo.count({
+      status: TaskStatusEnum.COMPLETED,
+    });
+    const disputedTasks = await this.taskRepo.count({
+      status: TaskStatusEnum.DISPUTED,
+    });
 
     return {
       totalTasks,
@@ -2190,7 +2315,11 @@ export class TasksService {
 
       const avgRating =
         allRatings.length > 0
-          ? parseFloat((allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length).toFixed(1))
+          ? parseFloat(
+              (
+                allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length
+              ).toFixed(1),
+            )
           : 0;
 
       return {
@@ -2224,7 +2353,9 @@ export class TasksService {
       updatedAt: task.createdAt, // Task doesn't have updatedAt, using createdAt
       deadline: task.deadline,
       poster: await serializeUserWithStats(task.postedBy),
-      assignedTo: task.assignedTo ? await serializeUserWithStats(task.assignedTo) : null,
+      assignedTo: task.assignedTo
+        ? await serializeUserWithStats(task.assignedTo)
+        : null,
       requirements: task.requirements || [],
       images: (task.images || []).map((img) => img.url),
       payment: payment
@@ -2368,11 +2499,14 @@ export class TasksService {
     }
 
     // Get activities
-    const [activities, total] = await this.taskActivityRepo.findAndCount(filter, {
-      orderBy: { timestamp: 'DESC' },
-      limit,
-      offset,
-    });
+    const [activities, total] = await this.taskActivityRepo.findAndCount(
+      filter,
+      {
+        orderBy: { timestamp: 'DESC' },
+        limit,
+        offset,
+      },
+    );
 
     return {
       activities: activities.map((activity) => ({
@@ -2423,7 +2557,10 @@ export class TasksService {
     task.previousStatus = task.status;
     task.status = TaskStatusEnum.SUSPENDED;
 
-    const afterState = { status: task.status, previousStatus: task.previousStatus };
+    const afterState = {
+      status: task.status,
+      previousStatus: task.previousStatus,
+    };
 
     // Create audit log
     await this.createAdminAuditLog({
@@ -2517,7 +2654,9 @@ export class TasksService {
       });
 
       if (acceptedBid) {
-        const payment = await this.paymentRepo.findOne({ taskBid: acceptedBid });
+        const payment = await this.paymentRepo.findOne({
+          taskBid: acceptedBid,
+        });
 
         if (payment && payment.status === PaymentStatus.ESCROWED) {
           // Refund to poster
@@ -2605,7 +2744,9 @@ export class TasksService {
         );
       }
       if (beforeState.assignedTo) {
-        const runner = await this.userRepo.findOne({ id: beforeState.assignedTo });
+        const runner = await this.userRepo.findOne({
+          id: beforeState.assignedTo,
+        });
         if (runner) {
           await this.notificationsService.createNotification(
             runner,
@@ -2639,8 +2780,13 @@ export class TasksService {
     }
 
     // Can only reopen suspended or cancelled tasks
-    if (task.status !== TaskStatusEnum.SUSPENDED && task.status !== TaskStatusEnum.CANCELLED) {
-      throw new BadRequestException('Only suspended or cancelled tasks can be reopened');
+    if (
+      task.status !== TaskStatusEnum.SUSPENDED &&
+      task.status !== TaskStatusEnum.CANCELLED
+    ) {
+      throw new BadRequestException(
+        'Only suspended or cancelled tasks can be reopened',
+      );
     }
 
     const beforeState = { status: task.status };
@@ -2816,7 +2962,11 @@ export class TasksService {
   }
 
   // Admin release payment
-  async adminReleasePayment(publicId: string, dto: ReleasePaymentDto, admin: Admin) {
+  async adminReleasePayment(
+    publicId: string,
+    dto: ReleasePaymentDto,
+    admin: Admin,
+  ) {
     const task = await this.taskRepo.findOne(
       { publicId },
       { populate: ['postedBy', 'assignedTo'] },
@@ -2843,7 +2993,11 @@ export class TasksService {
     }
 
     // Validate payment is in ESCROWED or COMPLETED status
-    if (![PaymentStatus.ESCROWED, PaymentStatus.COMPLETED].includes(payment.status)) {
+    if (
+      ![PaymentStatus.ESCROWED, PaymentStatus.COMPLETED].includes(
+        payment.status,
+      )
+    ) {
       throw new BadRequestException(
         `Payment must be in ESCROWED or COMPLETED status. Current status: ${payment.status}`,
       );
@@ -2934,7 +3088,11 @@ export class TasksService {
   }
 
   // Admin refund payment
-  async adminRefundPayment(publicId: string, dto: RefundPaymentDto, admin: Admin) {
+  async adminRefundPayment(
+    publicId: string,
+    dto: RefundPaymentDto,
+    admin: Admin,
+  ) {
     const task = await this.taskRepo.findOne(
       { publicId },
       { populate: ['postedBy', 'assignedTo'] },
@@ -3113,7 +3271,11 @@ export class TasksService {
   }
 
   // Admin add moderation note
-  async adminAddModerationNote(publicId: string, dto: AddModerationNoteDto, admin: Admin) {
+  async adminAddModerationNote(
+    publicId: string,
+    dto: AddModerationNoteDto,
+    admin: Admin,
+  ) {
     const task = await this.taskRepo.findOne({ publicId });
 
     if (!task) {

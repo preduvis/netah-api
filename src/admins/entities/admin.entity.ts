@@ -1,4 +1,12 @@
-import { Entity, Property, PrimaryKey, Unique, BeforeCreate, BeforeUpdate, EventArgs } from '@mikro-orm/core';
+import {
+  Entity,
+  Property,
+  PrimaryKey,
+  Unique,
+  BeforeCreate,
+  BeforeUpdate,
+  EventArgs,
+} from '@mikro-orm/core';
 import { Exclude } from 'class-transformer';
 import * as bcrypt from 'bcrypt';
 

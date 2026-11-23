@@ -9,7 +9,8 @@ export class PaystackService {
   private readonly baseUrl = 'https://api.paystack.co';
 
   constructor(private configService: ConfigService) {
-    this.paystackSecretKey = this.configService.get<string>('PAYSTACK_SECRET_KEY') || '';
+    this.paystackSecretKey =
+      this.configService.get<string>('PAYSTACK_SECRET_KEY') || '';
   }
 
   /**
@@ -74,13 +75,16 @@ export class PaystackService {
     };
   }> {
     try {
-      const response = await fetch(`${this.baseUrl}/transaction/verify/${reference}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.paystackSecretKey}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${this.baseUrl}/transaction/verify/${reference}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.paystackSecretKey}`,
+            'Content-Type': 'application/json',
+          },
         },
-      });
+      );
 
       const result = await response.json();
 

@@ -18,10 +18,16 @@ export default defineConfig({
     glob: '!(*.d).{js,ts}',
     emit: 'ts',
   },
-  pool: { min: 1, max: 5 },
+  pool: {
+    min: 2,
+    max: 20,
+    acquireTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
+  },
   driverOptions: {
     connection: {
-      ssl: { rejectUnauthorized: false }, // sometimes needed for self-signed certs
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
     },
   },
 });

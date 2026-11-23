@@ -1,5 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsOptional, IsBoolean, IsNumber, Min, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsOptional,
+  IsBoolean,
+  IsNumber,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { FlagSeverity } from '../entities/task-flag.entity';
 
 export class SuspendTaskDto {
@@ -9,7 +18,10 @@ export class SuspendTaskDto {
   @MinLength(10, { message: 'Admin note must be at least 10 characters' })
   note!: string;
 
-  @ApiProperty({ example: 'FRAUD', enum: ['FRAUD', 'POLICY_VIOLATION', 'DISPUTE', 'OTHER'] })
+  @ApiProperty({
+    example: 'FRAUD',
+    enum: ['FRAUD', 'POLICY_VIOLATION', 'DISPUTE', 'OTHER'],
+  })
   @IsEnum(['FRAUD', 'POLICY_VIOLATION', 'DISPUTE', 'OTHER'])
   reason!: string;
 
@@ -20,7 +32,10 @@ export class SuspendTaskDto {
 }
 
 export class CloseTaskDto {
-  @ApiProperty({ example: 'Closing task due to inactive poster', minLength: 10 })
+  @ApiProperty({
+    example: 'Closing task due to inactive poster',
+    minLength: 10,
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(10)
@@ -38,7 +53,10 @@ export class CloseTaskDto {
 }
 
 export class ReopenTaskDto {
-  @ApiProperty({ example: 'Reopening task after resolving dispute', minLength: 10 })
+  @ApiProperty({
+    example: 'Reopening task after resolving dispute',
+    minLength: 10,
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(10)
@@ -73,7 +91,10 @@ export class ClearFlagsDto {
   @MinLength(10)
   note!: string;
 
-  @ApiProperty({ enum: ['RESOLVED', 'FALSE_POSITIVE', 'NO_ACTION_NEEDED'], example: 'RESOLVED' })
+  @ApiProperty({
+    enum: ['RESOLVED', 'FALSE_POSITIVE', 'NO_ACTION_NEEDED'],
+    example: 'RESOLVED',
+  })
   @IsEnum(['RESOLVED', 'FALSE_POSITIVE', 'NO_ACTION_NEEDED'])
   resolution!: string;
 }
@@ -104,7 +125,10 @@ export class RefundPaymentDto {
   @MinLength(10)
   note!: string;
 
-  @ApiProperty({ enum: ['TASK_CANCELLED', 'RUNNER_NO_SHOW', 'DISPUTE_RESOLVED', 'OTHER'], example: 'RUNNER_NO_SHOW' })
+  @ApiProperty({
+    enum: ['TASK_CANCELLED', 'RUNNER_NO_SHOW', 'DISPUTE_RESOLVED', 'OTHER'],
+    example: 'RUNNER_NO_SHOW',
+  })
   @IsEnum(['TASK_CANCELLED', 'RUNNER_NO_SHOW', 'DISPUTE_RESOLVED', 'OTHER'])
   reason!: string;
 

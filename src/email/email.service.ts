@@ -2,7 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BrevoClient } from '@getbrevo/brevo';
 
-type SendTransacEmailRequest = Parameters<BrevoClient['transactionalEmails']['sendTransacEmail']>[0];
+type SendTransacEmailRequest = Parameters<
+  BrevoClient['transactionalEmails']['sendTransacEmail']
+>[0];
 
 @Injectable()
 export class EmailService {
@@ -15,7 +17,9 @@ export class EmailService {
     const brevoApiKey = this.configService.get<string>('BREVO_API_KEY');
 
     if (!brevoApiKey) {
-      this.logger.warn('BREVO_API_KEY not configured. Email service may not work.');
+      this.logger.warn(
+        'BREVO_API_KEY not configured. Email service may not work.',
+      );
     }
 
     // Initialize Brevo client
@@ -23,8 +27,11 @@ export class EmailService {
       apiKey: brevoApiKey,
     });
 
-    this.fromEmail = this.configService.get<string>('BREVO_FROM_EMAIL') || 'noreply@example.com';
-    this.fromName = this.configService.get<string>('BREVO_FROM_NAME') || 'Netah';
+    this.fromEmail =
+      this.configService.get<string>('BREVO_FROM_EMAIL') ||
+      'noreply@example.com';
+    this.fromName =
+      this.configService.get<string>('BREVO_FROM_NAME') || 'Netah';
   }
 
   private async sendWithRetry(
@@ -35,7 +42,10 @@ export class EmailService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await this.brevoClient.transactionalEmails.sendTransacEmail(emailRequest);
+        const response =
+          await this.brevoClient.transactionalEmails.sendTransacEmail(
+            emailRequest,
+          );
         return { success: true, data: response };
       } catch (error) {
         lastError = error;
@@ -45,12 +55,15 @@ export class EmailService {
           this.logger.warn(
             `Email send attempt ${attempt} failed, retrying in ${backoffMs}ms: ${error.message}`,
           );
-          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
         }
       }
     }
 
-    this.logger.error(`All ${maxRetries} email send attempts failed`, lastError);
+    this.logger.error(
+      `All ${maxRetries} email send attempts failed`,
+      lastError,
+    );
     return { success: false, error: lastError };
   }
 

@@ -59,7 +59,7 @@ export class Task {
   previousStatus?: TaskStatusEnum;
 
   @Property({ default: 0 })
-bidsCount: number & Opt = 0;
+  bidsCount: number & Opt = 0;
 
   @Property({ type: 'json', nullable: true })
   requirements?: string[];
@@ -105,5 +105,4 @@ bidsCount: number & Opt = 0;
 
   @Property({ nullable: true })
   deletedAt?: Date;
-
 }

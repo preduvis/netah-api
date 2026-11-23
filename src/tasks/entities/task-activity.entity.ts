@@ -1,10 +1,4 @@
-import {
-  Entity,
-  Enum,
-  ManyToOne,
-  PrimaryKey,
-  Property,
-} from '@mikro-orm/core';
+import { Entity, Enum, ManyToOne, PrimaryKey, Property } from '@mikro-orm/core';
 import { Task } from './task.entity';
 
 export enum ActivityType {

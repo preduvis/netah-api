@@ -22,6 +22,8 @@ import { SuperAdminGuard } from 'src/auth/guards/super-admin.guard';
 import { Response } from 'express';
 import { EmailService } from 'src/email/email.service';
 import { EntityManager } from '@mikro-orm/postgresql';
+import { CurrentUser } from 'src/auth/decorators/current-user-decorator';
+import { Admin } from './entities/admin.entity';
 
 @UseGuards(AdminJwtAuthGuard, MustChangePasswordGuard, Must2FAGuard)
 @Controller('admin/admins')
@@ -39,15 +41,26 @@ export class AdminsController {
     @Res({ passthrough: true }) res: Response,
   ) {
     // Prevent creation of admins with reserved name
-    if (createAdminDto.firstName === 'App' && createAdminDto.lastName === 'Administrator') {
-      throw new ConflictException('Cannot create admin with name "App Administrator". Please use a different name.');
+    if (
+      createAdminDto.firstName === 'App' &&
+      createAdminDto.lastName === 'Administrator'
+    ) {
+      throw new ConflictException(
+        'Cannot create admin with name "App Administrator". Please use a different name.',
+      );
     }
 
-    const existingEmail = await this.adminsService.findOneByEmailWithPassword(createAdminDto.email);
-    const existingPhone = await this.adminsService.findOneByPhoneNumber(createAdminDto.phoneNumber);
+    const existingEmail = await this.adminsService.findOneByEmailWithPassword(
+      createAdminDto.email,
+    );
+    const existingPhone = await this.adminsService.findOneByPhoneNumber(
+      createAdminDto.phoneNumber,
+    );
 
     if (existingEmail || existingPhone) {
-      throw new ConflictException('Admin already exists. Please use a different email or phone number!');
+      throw new ConflictException(
+        'Admin already exists. Please use a different email or phone number!',
+      );
     }
 
     // Use transaction to ensure atomicity: only create admin if email sends successfully
@@ -82,6 +95,22 @@ export class AdminsController {
     });
   }
 
+  @ResponseMessage('Current admin retrieved successfully!')
+  @Get('me')
+  getMe(@CurrentUser() admin: Admin) {
+    return {
+      id: admin.id,
+      email: admin.email,
+      firstName: admin.firstName,
+      lastName: admin.lastName,
+      phoneNumber: admin.phoneNumber,
+      twoFactorEnabled: admin.twoFactorEnabled,
+      mustChangePassword: admin.mustChangePassword,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt,
+    };
+  }
+
   @ResponseMessage('All admins retrieved successfully!')
   @Get()
   findAll() {
@@ -96,7 +125,10 @@ export class AdminsController {
 
   @ResponseMessage('Admin updated successfully!')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAdminDto: Partial<CreateAdminDto>) {
+  update(
+    @Param('id') id: string,
+    @Body() updateAdminDto: Partial<CreateAdminDto>,
+  ) {
     return this.adminsService.update(+id, updateAdminDto);
   }
 

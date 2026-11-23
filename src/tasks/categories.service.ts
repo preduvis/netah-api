@@ -24,7 +24,10 @@ export class CategoriesService {
     private readonly em: EntityManager,
   ) {}
 
-  async create(createCategoryDto: CreateTaskCategoryDto, admin: Admin): Promise<any> {
+  async create(
+    createCategoryDto: CreateTaskCategoryDto,
+    admin: Admin,
+  ): Promise<any> {
     // Check for duplicate name
     const existing = await this.categoryRepo.findOne({
       name: { $ilike: createCategoryDto.name },
@@ -56,32 +59,36 @@ export class CategoriesService {
       isActive: category.isActive,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
-      createdBy: category.createdBy ? {
-        id: category.createdBy.id,
-        firstName: category.createdBy.firstName,
-        lastName: category.createdBy.lastName,
-      } : null,
-      lastUpdatedBy: category.lastUpdatedBy ? {
-        id: category.lastUpdatedBy.id,
-        firstName: category.lastUpdatedBy.firstName,
-        lastName: category.lastUpdatedBy.lastName,
-      } : null,
+      createdBy: category.createdBy
+        ? {
+            id: category.createdBy.id,
+            firstName: category.createdBy.firstName,
+            lastName: category.createdBy.lastName,
+          }
+        : null,
+      lastUpdatedBy: category.lastUpdatedBy
+        ? {
+            id: category.lastUpdatedBy.id,
+            firstName: category.lastUpdatedBy.firstName,
+            lastName: category.lastUpdatedBy.lastName,
+          }
+        : null,
     };
   }
 
   async findAll(): Promise<any[]> {
     const categories = await this.categoryRepo.findAll({
       populate: ['createdBy', 'lastUpdatedBy'],
-      orderBy: { name: 'ASC' }
+      orderBy: { name: 'ASC' },
     });
 
-    return categories.map(category => this.formatCategory(category));
+    return categories.map((category) => this.formatCategory(category));
   }
 
   async findOne(id: number): Promise<any> {
     const category = await this.categoryRepo.findOne(
       { id },
-      { populate: ['createdBy', 'lastUpdatedBy'] }
+      { populate: ['createdBy', 'lastUpdatedBy'] },
     );
     if (!category) {
       throw new NotFoundException(`Category with ID ${id} not found`);
@@ -98,7 +105,11 @@ export class CategoriesService {
     return category;
   }
 
-  async update(id: number, updateCategoryDto: UpdateTaskCategoryDto, admin: Admin): Promise<any> {
+  async update(
+    id: number,
+    updateCategoryDto: UpdateTaskCategoryDto,
+    admin: Admin,
+  ): Promise<any> {
     const category = await this.findOneEntity(id);
 
     // Check for duplicate name if name is being updated
@@ -144,7 +155,11 @@ export class CategoriesService {
     await this.em.flush();
   }
 
-  async uploadImage(id: number, file: Express.Multer.File, admin: Admin): Promise<any> {
+  async uploadImage(
+    id: number,
+    file: Express.Multer.File,
+    admin: Admin,
+  ): Promise<any> {
     const category = await this.findOneEntity(id);
 
     // Delete old image if exists

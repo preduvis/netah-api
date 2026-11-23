@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Res, Req, UseGuards, Put, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Res,
+  Req,
+  UseGuards,
+  Put,
+  Get,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -37,7 +46,12 @@ export class AdminController {
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
   ) {
-    return this.authService.verify2FALogin(verify2FALoginDto.pendingToken, verify2FALoginDto.code, res, req);
+    return this.authService.verify2FALogin(
+      verify2FALoginDto.pendingToken,
+      verify2FALoginDto.code,
+      res,
+      req,
+    );
   }
 
   @ResponseMessage('Current admin retrieved successfully!')
@@ -57,14 +71,18 @@ export class AdminController {
     return this.authService.changeAdminPassword(admin, changePasswordDto);
   }
 
-  @ResponseMessage('2FA secret generated successfully! Scan QR code with authenticator app.')
+  @ResponseMessage(
+    '2FA secret generated successfully! Scan QR code with authenticator app.',
+  )
   @UseGuards(AdminJwtAuthGuard)
   @Post('2fa/generate')
   generate2FA(@CurrentUser() admin: Admin) {
     return this.authService.generate2FASecret(admin);
   }
 
-  @ResponseMessage('2FA enabled successfully! You will need to enter code on next login.')
+  @ResponseMessage(
+    '2FA enabled successfully! You will need to enter code on next login.',
+  )
   @UseGuards(AdminJwtAuthGuard)
   @Post('2fa/enable')
   enable2FA(@CurrentUser() admin: Admin, @Body() verify2FADto: Verify2FADto) {

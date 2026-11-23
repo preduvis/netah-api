@@ -1,4 +1,10 @@
-import { Entity, Filter, ManyToOne, PrimaryKey, Property } from '@mikro-orm/core';
+import {
+  Entity,
+  Filter,
+  ManyToOne,
+  PrimaryKey,
+  Property,
+} from '@mikro-orm/core';
 import { Admin } from 'src/admins/entities/admin.entity';
 
 @Entity()

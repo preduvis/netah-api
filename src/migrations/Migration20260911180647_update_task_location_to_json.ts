@@ -1,7 +1,6 @@
 import { Migration } from '@mikro-orm/migrations';
 
 export class Migration20260911180647_update_task_location_to_json extends Migration {
-
   override async up(): Promise<void> {
     // Convert existing string locations to JSON format with landmark field
     this.addSql(`
@@ -17,7 +16,8 @@ export class Migration20260911180647_update_task_location_to_json extends Migrat
   }
 
   override async down(): Promise<void> {
-    this.addSql(`alter table "task" alter column "location" type varchar(255) using ("location"::varchar(255));`);
+    this.addSql(
+      `alter table "task" alter column "location" type varchar(255) using ("location"::varchar(255));`,
+    );
   }
-
 }

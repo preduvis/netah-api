@@ -43,7 +43,11 @@ export class ProfileController {
     @Body() updateProfileDto: UpdateProfileDto,
     @Req() req: Request,
   ) {
-    return this.profileService.updateProfile(currentUser.id, updateProfileDto, req);
+    return this.profileService.updateProfile(
+      currentUser.id,
+      updateProfileDto,
+      req,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -61,7 +65,9 @@ export class ProfileController {
 
     const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
     if (!allowedMimes.includes(file.mimetype)) {
-      throw new BadRequestException('Only image files (jpeg, png, jpg, webp) are allowed');
+      throw new BadRequestException(
+        'Only image files (jpeg, png, jpg, webp) are allowed',
+      );
     }
 
     const maxSize = 5 * 1024 * 1024; // 5MB
@@ -75,10 +81,7 @@ export class ProfileController {
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Profile image deleted successfully!')
   @Delete('me/delete-image')
-  deleteProfileImage(
-    @CurrentUser() currentUser: User,
-    @Req() req: Request,
-  ) {
+  deleteProfileImage(@CurrentUser() currentUser: User, @Req() req: Request) {
     return this.profileService.deleteProfileImage(currentUser.id, req);
   }
 
@@ -90,7 +93,11 @@ export class ProfileController {
     @Body() changePasswordDto: ChangePasswordDto,
     @Req() req: Request,
   ) {
-    return this.profileService.changePassword(currentUser.id, changePasswordDto, req);
+    return this.profileService.changePassword(
+      currentUser.id,
+      changePasswordDto,
+      req,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -107,7 +114,10 @@ export class ProfileController {
     @CurrentUser() currentUser: User,
     @Body() updateDto: UpdateNotificationPreferencesDto,
   ) {
-    return this.profileService.updateNotificationPreferences(currentUser.id, updateDto);
+    return this.profileService.updateNotificationPreferences(
+      currentUser.id,
+      updateDto,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -124,7 +134,10 @@ export class ProfileController {
     @CurrentUser() currentUser: User,
     @Body() updateDto: UpdateProfileVisibilityDto,
   ) {
-    return this.profileService.updateProfileVisibility(currentUser.id, updateDto);
+    return this.profileService.updateProfileVisibility(
+      currentUser.id,
+      updateDto,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

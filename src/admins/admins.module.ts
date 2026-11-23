@@ -9,7 +9,10 @@ import { User } from 'src/users/entities/user.entity';
 import { EmailModule } from 'src/email/email.module';
 
 @Module({
-  imports: [MikroOrmModule.forFeature([Admin, AdminAuditLog, Task, User]), EmailModule],
+  imports: [
+    MikroOrmModule.forFeature([Admin, AdminAuditLog, Task, User]),
+    EmailModule,
+  ],
   controllers: [AdminsController],
   providers: [AdminsService],
   exports: [AdminsService],

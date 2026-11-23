@@ -30,7 +30,8 @@ export class AdminUsersController {
     @Query('toDate') toDate?: string,
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
-    @Query('sort') sort?: 'created_asc' | 'created_desc' | 'name_asc' | 'name_desc',
+    @Query('sort')
+    sort?: 'created_asc' | 'created_desc' | 'name_asc' | 'name_desc',
   ) {
     return this.usersService.adminFindAllUsers({
       search,
@@ -51,7 +52,10 @@ export class AdminUsersController {
 
   @ResponseMessage('User updated successfully!')
   @Patch(':uuid')
-  updateUser(@Param('uuid') uuid: string, @Body() updateUserDto: UpdateUserDto) {
+  updateUser(
+    @Param('uuid') uuid: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
     return this.usersService.updateByUuid(uuid, updateUserDto);
   }
 

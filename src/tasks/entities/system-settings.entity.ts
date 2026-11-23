@@ -1,4 +1,11 @@
-import { Entity, Enum, ManyToOne, PrimaryKey, Property, Unique } from '@mikro-orm/core';
+import {
+  Entity,
+  Enum,
+  ManyToOne,
+  PrimaryKey,
+  Property,
+  Unique,
+} from '@mikro-orm/core';
 import { Admin } from 'src/admins/entities/admin.entity';
 
 export enum ServiceChargeType {

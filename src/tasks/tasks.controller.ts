@@ -37,7 +37,10 @@ export class TasksController {
   @ResponseMessage('Task posted successfully!')
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() createTaskDto: CreateTaskDto, @CurrentUser() currentUser: User) {
+  create(
+    @Body() createTaskDto: CreateTaskDto,
+    @CurrentUser() currentUser: User,
+  ) {
     return this.tasksService.create(createTaskDto, currentUser);
   }
 
@@ -81,7 +84,10 @@ export class TasksController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOneByUuid(@Param('id') id: string, @CurrentUser() currentUser: User): Promise<any> {
+  findOneByUuid(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: User,
+  ): Promise<any> {
     return this.tasksService.findOneByUuid(id, currentUser);
   }
 
@@ -111,7 +117,9 @@ export class TasksController {
 
     const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
     if (!allowedMimes.includes(file.mimetype)) {
-      throw new BadRequestException('Only image files (jpeg, png, jpg, webp) are allowed');
+      throw new BadRequestException(
+        'Only image files (jpeg, png, jpg, webp) are allowed',
+      );
     }
 
     const maxSize = 5 * 1024 * 1024; // 5MB
@@ -180,7 +188,12 @@ export class TasksController {
     @Body() counterTaskBidDto: CounterTaskBidDto,
     @CurrentUser() currentUser: User,
   ) {
-    return this.tasksService.counterTaskBid(id, bidId, counterTaskBidDto, currentUser);
+    return this.tasksService.counterTaskBid(
+      id,
+      bidId,
+      counterTaskBidDto,
+      currentUser,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -241,14 +254,20 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Task marked as completed successfully!')
   @Post(':id/complete')
-  markTaskAsCompleted(@Param('id') id: string, @CurrentUser() currentUser: User) {
+  markTaskAsCompleted(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: User,
+  ) {
     return this.tasksService.markTaskAsCompleted(id, currentUser);
   }
 
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Completion template retrieved successfully!')
   @Get(':id/complete/template')
-  getCompletionDetails(@Param('id') id: string, @CurrentUser() currentUser: User) {
+  getCompletionDetails(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: User,
+  ) {
     return this.tasksService.getCompletionDetails(id, currentUser);
   }
 
@@ -260,7 +279,11 @@ export class TasksController {
     @Body() approveTaskDto: ApproveTaskDto,
     @CurrentUser() currentUser: User,
   ) {
-    return this.tasksService.approveAndReleaseFunds(id, approveTaskDto, currentUser);
+    return this.tasksService.approveAndReleaseFunds(
+      id,
+      approveTaskDto,
+      currentUser,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -292,7 +315,10 @@ export class TasksController {
   }
 
   @Post('payments/webhook')
-  async handlePaystackWebhook(@Headers('x-paystack-signature') signature: string, @Body() body: any) {
+  async handlePaystackWebhook(
+    @Headers('x-paystack-signature') signature: string,
+    @Body() body: any,
+  ) {
     // Verify webhook signature
     const isValid = this.tasksService['paystackService'].verifyWebhookSignature(
       signature,

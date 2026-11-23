@@ -31,7 +31,10 @@ export class CategoriesController {
 
   @ResponseMessage('Category created successfully!')
   @Post()
-  create(@Body() createCategoryDto: CreateTaskCategoryDto, @CurrentUser() admin: Admin) {
+  create(
+    @Body() createCategoryDto: CreateTaskCategoryDto,
+    @CurrentUser() admin: Admin,
+  ) {
     return this.categoriesService.create(createCategoryDto, admin);
   }
 
@@ -49,7 +52,11 @@ export class CategoriesController {
 
   @ResponseMessage('Category updated successfully!')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCategoryDto: UpdateTaskCategoryDto, @CurrentUser() admin: Admin) {
+  update(
+    @Param('id') id: string,
+    @Body() updateCategoryDto: UpdateTaskCategoryDto,
+    @CurrentUser() admin: Admin,
+  ) {
     return this.categoriesService.update(+id, updateCategoryDto, admin);
   }
 
@@ -75,9 +82,17 @@ export class CategoriesController {
     @CurrentUser() admin: Admin,
   ) {
     // Manual validation for file types including SVG
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/svg+xml',
+    ];
     if (!allowedMimeTypes.includes(file.mimetype)) {
-      throw new BadRequestException(`Invalid file type. Allowed types: ${allowedMimeTypes.join(', ')}`);
+      throw new BadRequestException(
+        `Invalid file type. Allowed types: ${allowedMimeTypes.join(', ')}`,
+      );
     }
     return this.categoriesService.uploadImage(+id, file, admin);
   }

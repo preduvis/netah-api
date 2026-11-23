@@ -1,4 +1,11 @@
-import { Injectable, NotFoundException, ConflictException, UnauthorizedException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  UnauthorizedException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository, EntityManager } from '@mikro-orm/postgresql';
 import { User } from 'src/users/entities/user.entity';
@@ -100,14 +107,19 @@ export class ProfileService {
     }));
 
     // Combine and sort by date
-    const allReviews = [...runnerReviewsFormatted, ...posterReviewsFormatted].sort(
-      (a, b) => (b.completedAt?.getTime() || 0) - (a.completedAt?.getTime() || 0),
+    const allReviews = [
+      ...runnerReviewsFormatted,
+      ...posterReviewsFormatted,
+    ].sort(
+      (a, b) =>
+        (b.completedAt?.getTime() || 0) - (a.completedAt?.getTime() || 0),
     );
 
     const totalReviews = allReviews.length;
     const averageRating =
       totalReviews > 0
-        ? allReviews.reduce((sum, review) => sum + (review.rating || 0), 0) / totalReviews
+        ? allReviews.reduce((sum, review) => sum + (review.rating || 0), 0) /
+          totalReviews
         : 0;
 
     return {
@@ -159,7 +171,10 @@ export class ProfileService {
       { populate: ['taskBid', 'taskBid.task'] },
     );
 
-    const totalEarnings = payments.reduce((sum, payment) => sum + payment.bidAmount, 0);
+    const totalEarnings = payments.reduce(
+      (sum, payment) => sum + payment.bidAmount,
+      0,
+    );
 
     // Get reviews where user was the runner (received rating from poster)
     const runnerReviews = await this.taskRepo.find({
@@ -183,7 +198,11 @@ export class ProfileService {
 
     const avgRating =
       allRatings.length > 0
-        ? parseFloat((allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length).toFixed(1))
+        ? parseFloat(
+            (
+              allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length
+            ).toFixed(1),
+          )
         : 0;
 
     return {
@@ -232,7 +251,11 @@ export class ProfileService {
 
     const avgRating =
       allRatings.length > 0
-        ? parseFloat((allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length).toFixed(1))
+        ? parseFloat(
+            (
+              allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length
+            ).toFixed(1),
+          )
         : 0;
 
     // Calculate on-time rate
@@ -243,7 +266,9 @@ export class ProfileService {
         status: TaskStatusEnum.COMPLETED,
         disputeReason: null,
       });
-      onTimeRate = parseFloat(((tasksNotDisputed / completedTasks) * 100).toFixed(1));
+      onTimeRate = parseFloat(
+        ((tasksNotDisputed / completedTasks) * 100).toFixed(1),
+      );
     }
 
     // Calculate response rate (placeholder)
@@ -284,7 +309,11 @@ export class ProfileService {
     };
   }
 
-  async updateProfile(userId: number, updateProfileDto: UpdateProfileDto, req?: any): Promise<User> {
+  async updateProfile(
+    userId: number,
+    updateProfileDto: UpdateProfileDto,
+    req?: any,
+  ): Promise<User> {
     const user = await this.userRepo.findOne({ id: userId });
 
     if (!user) {
@@ -292,7 +321,10 @@ export class ProfileService {
     }
 
     // Check if email is being updated and if it already exists
-    if (updateProfileDto.email && updateProfileDto.email.toLowerCase() !== user.email.toLowerCase()) {
+    if (
+      updateProfileDto.email &&
+      updateProfileDto.email.toLowerCase() !== user.email.toLowerCase()
+    ) {
       const existingUser = await this.userRepo.findOne({
         email: { $ilike: updateProfileDto.email },
       });
@@ -303,7 +335,10 @@ export class ProfileService {
     }
 
     // Check if phone number is being updated and if it already exists
-    if (updateProfileDto.phoneNumber && updateProfileDto.phoneNumber !== user.phoneNumber) {
+    if (
+      updateProfileDto.phoneNumber &&
+      updateProfileDto.phoneNumber !== user.phoneNumber
+    ) {
       const existingUser = await this.userRepo.findOne({
         phoneNumber: updateProfileDto.phoneNumber,
       });
@@ -315,12 +350,14 @@ export class ProfileService {
 
     // Track what fields were updated for logging
     const updatedFields = Object.keys(updateProfileDto).filter(
-      (key) => updateProfileDto[key as keyof UpdateProfileDto] !== undefined
+      (key) => updateProfileDto[key as keyof UpdateProfileDto] !== undefined,
     );
 
     // Filter out undefined values to avoid assignment errors
     const filteredDto = Object.fromEntries(
-      Object.entries(updateProfileDto).filter(([_, value]) => value !== undefined)
+      Object.entries(updateProfileDto).filter(
+        ([_, value]) => value !== undefined,
+      ),
     );
 
     this.userRepo.assign(user, filteredDto);
@@ -342,7 +379,11 @@ export class ProfileService {
     return user;
   }
 
-  async changePassword(userId: number, changePasswordDto: ChangePasswordDto, req?: any): Promise<void> {
+  async changePassword(
+    userId: number,
+    changePasswordDto: ChangePasswordDto,
+    req?: any,
+  ): Promise<void> {
     const user = await this.userRepo.findOne({ id: userId });
 
     if (!user) {
@@ -410,7 +451,7 @@ export class ProfileService {
 
     // Filter out undefined values
     const filteredDto = Object.fromEntries(
-      Object.entries(updateDto).filter(([_, value]) => value !== undefined)
+      Object.entries(updateDto).filter(([_, value]) => value !== undefined),
     );
 
     this.userRepo.assign(user, filteredDto);
@@ -447,7 +488,10 @@ export class ProfileService {
     };
   }
 
-  async updateProfileVisibility(userId: number, updateDto: UpdateProfileVisibilityDto) {
+  async updateProfileVisibility(
+    userId: number,
+    updateDto: UpdateProfileVisibilityDto,
+  ) {
     const user = await this.userRepo.findOne({ id: userId });
 
     if (!user) {
@@ -456,7 +500,7 @@ export class ProfileService {
 
     // Filter out undefined values
     const filteredDto = Object.fromEntries(
-      Object.entries(updateDto).filter(([_, value]) => value !== undefined)
+      Object.entries(updateDto).filter(([_, value]) => value !== undefined),
     );
 
     this.userRepo.assign(user, filteredDto);
@@ -526,7 +570,11 @@ export class ProfileService {
 
       const avgRating =
         allRatings.length > 0
-          ? parseFloat((allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length).toFixed(1))
+          ? parseFloat(
+              (
+                allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length
+              ).toFixed(1),
+            )
           : 0;
 
       profile.rating = avgRating;
@@ -558,7 +606,9 @@ export class ProfileService {
         disputeReason: null,
       });
 
-      profile.onTimeRate = parseFloat(((tasksNotDisputed / totalCompletedAsRunner) * 100).toFixed(1));
+      profile.onTimeRate = parseFloat(
+        ((tasksNotDisputed / totalCompletedAsRunner) * 100).toFixed(1),
+      );
     } else {
       profile.onTimeRate = 0;
     }
@@ -581,7 +631,11 @@ export class ProfileService {
     return profile;
   }
 
-  async uploadProfileImage(userId: number, file: Express.Multer.File, req?: any) {
+  async uploadProfileImage(
+    userId: number,
+    file: Express.Multer.File,
+    req?: any,
+  ) {
     const user = await this.userRepo.findOne(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -593,7 +647,10 @@ export class ProfileService {
     }
 
     // Upload new image
-    const { url, publicId } = await this.cloudinaryService.uploadImage(file, 'netah/profiles');
+    const { url, publicId } = await this.cloudinaryService.uploadImage(
+      file,
+      'netah/profiles',
+    );
 
     // Update user
     user.profileImage = url;

@@ -7,7 +7,10 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { User } from './entities/user.entity';
-import { UserActivity, UserActivityType } from './entities/user-activity.entity';
+import {
+  UserActivity,
+  UserActivityType,
+} from './entities/user-activity.entity';
 import { Task } from 'src/tasks/entities/task.entity';
 import { Payment } from 'src/tasks/entities/payment.entity';
 import { EntityManager, EntityRepository } from '@mikro-orm/postgresql';
@@ -78,10 +81,10 @@ export class UsersService {
     // Calculate total spent (as poster)
     const paymentsAsPoster = await this.paymentRepo.find(
       { paidBy: user },
-      { populate: ['taskBid', 'taskBid.task'] }
+      { populate: ['taskBid', 'taskBid.task'] },
     );
     const totalSpent = paymentsAsPoster
-      .filter(p => p.status !== 'REFUNDED' && p.status !== 'FAILED')
+      .filter((p) => p.status !== 'REFUNDED' && p.status !== 'FAILED')
       .reduce((sum, p) => sum + Number(p.totalAmount), 0);
 
     // Calculate total earned (as runner - released payments)
@@ -90,9 +93,12 @@ export class UsersService {
         taskBid: { task: { assignedTo: user } },
         status: { $in: ['RELEASED', 'COMPLETED'] as any },
       },
-      { populate: ['taskBid', 'taskBid.task'] }
+      { populate: ['taskBid', 'taskBid.task'] },
     );
-    const totalEarned = paymentsAsRunner.reduce((sum, p) => sum + Number(p.bidAmount), 0);
+    const totalEarned = paymentsAsRunner.reduce(
+      (sum, p) => sum + Number(p.bidAmount),
+      0,
+    );
 
     // Get reviews and calculate rating
     const runnerReviews = await this.taskRepo.find({
@@ -114,7 +120,11 @@ export class UsersService {
 
     const avgRating =
       allRatings.length > 0
-        ? parseFloat((allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length).toFixed(1))
+        ? parseFloat(
+            (
+              allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length
+            ).toFixed(1),
+          )
         : 0;
 
     // Calculate completion rate (completed / assigned)
@@ -131,7 +141,9 @@ export class UsersService {
         status: 'COMPLETED' as any,
         disputeReason: null,
       });
-      onTimeRate = parseFloat(((tasksNotDisputed / completedTasks) * 100).toFixed(1));
+      onTimeRate = parseFloat(
+        ((tasksNotDisputed / completedTasks) * 100).toFixed(1),
+      );
     }
 
     return {
@@ -256,8 +268,10 @@ export class UsersService {
     let orderBy: any = { createdAt: 'DESC' };
     if (options?.sort === 'created_asc') orderBy = { createdAt: 'ASC' };
     else if (options?.sort === 'created_desc') orderBy = { createdAt: 'DESC' };
-    else if (options?.sort === 'name_asc') orderBy = { firstName: 'ASC', lastName: 'ASC' };
-    else if (options?.sort === 'name_desc') orderBy = { firstName: 'DESC', lastName: 'DESC' };
+    else if (options?.sort === 'name_asc')
+      orderBy = { firstName: 'ASC', lastName: 'ASC' };
+    else if (options?.sort === 'name_desc')
+      orderBy = { firstName: 'DESC', lastName: 'DESC' };
 
     // Get users with pagination
     const [users, total] = await this.userRepo.findAndCount(filter, {
@@ -307,12 +321,15 @@ export class UsersService {
     return [];
   }
 
-  async adminGetUserTasksByUuid(uuid: string, options?: {
-    role?: 'poster' | 'runner' | 'all';
-    status?: string;
-    page?: number;
-    pageSize?: number;
-  }) {
+  async adminGetUserTasksByUuid(
+    uuid: string,
+    options?: {
+      role?: 'poster' | 'runner' | 'all';
+      status?: string;
+      page?: number;
+      pageSize?: number;
+    },
+  ) {
     const user = await this.userRepo.findOne({ uuid });
     if (!user) throw new NotFoundException('User not found');
 
@@ -329,10 +346,7 @@ export class UsersService {
       filter.assignedTo = user;
     } else {
       // Default: all tasks (poster or runner)
-      filter.$or = [
-        { postedBy: user },
-        { assignedTo: user },
-      ];
+      filter.$or = [{ postedBy: user }, { assignedTo: user }];
     }
 
     if (options?.status) {
@@ -361,11 +375,13 @@ export class UsersService {
         firstName: task.postedBy.firstName,
         lastName: task.postedBy.lastName,
       },
-      assignedTo: task.assignedTo ? {
-        uuid: task.assignedTo.uuid,
-        firstName: task.assignedTo.firstName,
-        lastName: task.assignedTo.lastName,
-      } : null,
+      assignedTo: task.assignedTo
+        ? {
+            uuid: task.assignedTo.uuid,
+            firstName: task.assignedTo.firstName,
+            lastName: task.assignedTo.lastName,
+          }
+        : null,
       userRole: task.postedBy.id === user.id ? 'poster' : 'runner',
       createdAt: task.createdAt,
       deadline: task.deadline,
@@ -381,11 +397,14 @@ export class UsersService {
     };
   }
 
-  async adminGetUserPaymentsByUuid(uuid: string, options?: {
-    status?: string;
-    page?: number;
-    pageSize?: number;
-  }) {
+  async adminGetUserPaymentsByUuid(
+    uuid: string,
+    options?: {
+      status?: string;
+      page?: number;
+      pageSize?: number;
+    },
+  ) {
     const user = await this.userRepo.findOne({ uuid });
     if (!user) throw new NotFoundException('User not found');
 
@@ -405,7 +424,13 @@ export class UsersService {
       orderBy: { createdAt: 'DESC' },
       limit: pageSize,
       offset,
-      populate: ['taskBid', 'taskBid.task', 'taskBid.task.category', 'taskBid.task.postedBy', 'taskBid.task.assignedTo'],
+      populate: [
+        'taskBid',
+        'taskBid.task',
+        'taskBid.task.category',
+        'taskBid.task.postedBy',
+        'taskBid.task.assignedTo',
+      ],
     });
 
     const enrichedPayments = payments.map((payment) => ({
@@ -425,11 +450,13 @@ export class UsersService {
           firstName: payment.taskBid.task.postedBy.firstName,
           lastName: payment.taskBid.task.postedBy.lastName,
         },
-        assignedTo: payment.taskBid.task.assignedTo ? {
-          uuid: payment.taskBid.task.assignedTo.uuid,
-          firstName: payment.taskBid.task.assignedTo.firstName,
-          lastName: payment.taskBid.task.assignedTo.lastName,
-        } : null,
+        assignedTo: payment.taskBid.task.assignedTo
+          ? {
+              uuid: payment.taskBid.task.assignedTo.uuid,
+              firstName: payment.taskBid.task.assignedTo.firstName,
+              lastName: payment.taskBid.task.assignedTo.lastName,
+            }
+          : null,
       },
       createdAt: payment.createdAt,
       completedAt: payment.completedAt,
@@ -466,11 +493,14 @@ export class UsersService {
       filter.type = options.type;
     }
 
-    const [activities, total] = await this.userActivityRepo.findAndCount(filter, {
-      orderBy: { timestamp: 'DESC' },
-      limit,
-      offset,
-    });
+    const [activities, total] = await this.userActivityRepo.findAndCount(
+      filter,
+      {
+        orderBy: { timestamp: 'DESC' },
+        limit,
+        offset,
+      },
+    );
 
     return {
       activities: activities.map((activity) => ({
@@ -509,11 +539,14 @@ export class UsersService {
       filter.type = options.type;
     }
 
-    const [activities, total] = await this.userActivityRepo.findAndCount(filter, {
-      orderBy: { timestamp: 'DESC' },
-      limit,
-      offset,
-    });
+    const [activities, total] = await this.userActivityRepo.findAndCount(
+      filter,
+      {
+        orderBy: { timestamp: 'DESC' },
+        limit,
+        offset,
+      },
+    );
 
     return {
       activities: activities.map((activity) => ({

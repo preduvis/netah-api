@@ -47,7 +47,14 @@ export class AdminTasksController {
     @Query('hasFlagsOnly') hasFlagsOnly?: boolean,
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
-    @Query('sort') sort?: 'created_asc' | 'created_desc' | 'reward_asc' | 'reward_desc' | 'deadline_asc' | 'deadline_desc',
+    @Query('sort')
+    sort?:
+      | 'created_asc'
+      | 'created_desc'
+      | 'reward_asc'
+      | 'reward_desc'
+      | 'deadline_asc'
+      | 'deadline_desc',
   ) {
     return this.tasksService.adminFindAllTasks({
       status,
@@ -73,7 +80,8 @@ export class AdminTasksController {
   getTaskBids(
     @Param('id') id: string,
     @Query('status') status?: string,
-    @Query('sort') sort?: 'created_asc' | 'created_desc' | 'amount_asc' | 'amount_desc',
+    @Query('sort')
+    sort?: 'created_asc' | 'created_desc' | 'amount_asc' | 'amount_desc',
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
   ) {

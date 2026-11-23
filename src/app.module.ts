@@ -11,6 +11,7 @@ import { CategoriesModule } from './tasks/categories.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ProfileModule } from './profile/profile.module';
 import { EmailModule } from './email/email.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { EmailModule } from './email/email.module';
     NotificationsModule,
     ProfileModule,
     EmailModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

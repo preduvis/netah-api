@@ -1,7 +1,6 @@
 import { Migration } from '@mikro-orm/migrations';
 
 export class Migration20261012200512 extends Migration {
-
   override async up(): Promise<void> {
     // Check if admin table exists and alter if needed
     this.addSql(`
@@ -76,13 +75,16 @@ export class Migration20261012200512 extends Migration {
     this.addSql(`DELETE FROM "user" WHERE "role" = 'admin';`);
 
     // Drop admin-specific columns from user table
-    this.addSql(`alter table "user" drop column if exists "role", drop column if exists "must_change_password", drop column if exists "two_factor_secret", drop column if exists "two_factor_enabled";`);
+    this.addSql(
+      `alter table "user" drop column if exists "role", drop column if exists "must_change_password", drop column if exists "two_factor_secret", drop column if exists "two_factor_enabled";`,
+    );
   }
 
   override async down(): Promise<void> {
     this.addSql(`drop table if exists "admin" cascade;`);
 
-    this.addSql(`alter table "user" add column "role" varchar(255) not null default 'user', add column "must_change_password" boolean not null default false, add column "two_factor_secret" varchar(255) null, add column "two_factor_enabled" boolean not null default false;`);
+    this.addSql(
+      `alter table "user" add column "role" varchar(255) not null default 'user', add column "must_change_password" boolean not null default false, add column "two_factor_secret" varchar(255) null, add column "two_factor_enabled" boolean not null default false;`,
+    );
   }
-
 }

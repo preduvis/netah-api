@@ -19,7 +19,10 @@ export class NotificationsController {
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Notification marked as read successfully!')
   @Patch(':id/read')
-  markNotificationAsRead(@Param('id') id: string, @CurrentUser() currentUser: User) {
+  markNotificationAsRead(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: User,
+  ) {
     return this.notificationsService.markNotificationAsRead(+id, currentUser);
   }
 

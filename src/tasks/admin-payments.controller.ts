@@ -1,9 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { ResponseMessage } from 'src/response/response.decorator';
 import { AdminJwtAuthGuard } from 'src/auth/guards/admin-jwt-auth.guard';
@@ -46,9 +41,15 @@ export class AdminPaymentsController {
   @Get('stats/overview')
   async getPaymentStats() {
     const totalPayments = await this.paymentRepo.count();
-    const completedPayments = await this.paymentRepo.count({ status: PaymentStatus.COMPLETED });
-    const pendingPayments = await this.paymentRepo.count({ status: PaymentStatus.PENDING });
-    const failedPayments = await this.paymentRepo.count({ status: PaymentStatus.FAILED });
+    const completedPayments = await this.paymentRepo.count({
+      status: PaymentStatus.COMPLETED,
+    });
+    const pendingPayments = await this.paymentRepo.count({
+      status: PaymentStatus.PENDING,
+    });
+    const failedPayments = await this.paymentRepo.count({
+      status: PaymentStatus.FAILED,
+    });
 
     return {
       totalPayments,

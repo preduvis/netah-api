@@ -1,10 +1,4 @@
-import {
-  Entity,
-  Enum,
-  ManyToOne,
-  PrimaryKey,
-  Property,
-} from '@mikro-orm/core';
+import { Entity, Enum, ManyToOne, PrimaryKey, Property } from '@mikro-orm/core';
 import { Task } from './task.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Admin } from 'src/admins/entities/admin.entity';
